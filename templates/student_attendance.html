@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Attendance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    :root{
+      --bg:#071020; --card:#0f1833; --muted:rgba(255,255,255,0.72);
+      --accent:#3b82f6; --good:#48bb78; --bad:#f56565; --radius:12px;
+      font-family:Inter, Poppins, Arial, sans-serif;
+    }
+    body{margin:0;background:linear-gradient(135deg,#07102f,#020414);color:#fff;padding:28px}
+    .wrap{max-width:1100px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .title{font-size:20px;font-weight:700}
+    .meta{color:var(--muted);font-size:13px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:18px;border-radius:var(--radius);margin-top:14px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .filters input[type="date"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff}
+    .btn{background:linear-gradient(90deg,#06b6d4,var(--accent));padding:8px 12px;border-radius:8px;color:#fff;border:none;cursor:pointer;font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    thead th{padding:10px 12px;color:var(--muted);text-align:left;font-size:13px}
+    tbody td{padding:12px;border-top:1px solid rgba(255,255,255,0.03);font-size:14px;vertical-align:middle}
+    tbody tr:hover td{background:linear-gradient(90deg,rgba(59,130,246,0.03),transparent)}
+    .status{padding:6px 10px;border-radius:999px;font-weight:700;font-size:13px}
+    .present{background:rgba(72,187,120,0.12);color:var(--good)}
+    .absent{background:rgba(245,101,101,0.09);color:var(--bad)}
+    .small{font-size:13px;color:var(--muted)}
+    @media (max-width:880px){.header{flex-direction:column;align-items:flex-start}.filters{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">My Attendance</div>
+        <div class="meta">Student: <strong>{{ student.name }}</strong> — <span class="small">{{ student.email }}</span></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="{{ url_for('student_dashboard') }}" class="small" style="color:#9fb7ff;text-decoration:none">← Dashboard</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <form method="GET" class="filters" novalidate>
+        <label class="small" style="margin-right:6px">Date</label>
+        <input type="date" name="date" value="{{ request.args.get('date','') }}">
+        <button class="btn" type="submit">Filter</button>
+        <a href="{{ url_for('student_attendance') }}" class="small" style="margin-left:auto;text-decoration:none;color:var(--muted)">Reset</a>
+      </form>
+
+      {% if records %}
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Subject</th><th>Teacher</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+              <tr>
+                <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+                <td>{{ r.subject or '—' }}</td>
+                <td>{{ r.teacher_obj.name if r.teacher_obj else ('#' ~ (r.teacher_id or '')) }}</td>
+                <td>
+                  <span class="status {% if (r.status or '').lower()=='present' %}present{% else %}absent{% endif %}">
+                    {{ r.status }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="small" style="padding:12px 0">No attendance records found.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

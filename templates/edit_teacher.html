@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edit Teacher</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg,#6a11cb,#2575fc);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: rgba(255,255,255,0.1);
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 32px;
+      font-weight: 600;
+    }
+
+    label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 18px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #1e90ff;
+      color: white;
+      font-weight: 600;
+      transition: .2s;
+    }
+
+    button:hover {
+      background: #1475d1;
+    }
+
+    .cancel-btn {
+      display: block;
+      text-align: center;
+      margin-top: 15px;
+      color: #fff;
+      text-decoration: underline;
+      font-size: 14px;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Edit Teacher</h1>
+
+    <form method="post" action="{{ url_for('edit_teacher', id=teacher.id) }}">
+      
+      <label>Name</label>
+      <input name="name" value="{{ teacher.name }}" required>
+
+      <label>Email</label>
+      <input name="email" type="email" value="{{ teacher.email }}" required>
+
+      <label>Department</label>
+      <input name="department" value="{{ teacher.department or '' }}">
+
+      <label>Subject</label>
+      <input name="subject" value="{{ teacher.subject or '' }}">
+
+      <label>New password (leave blank to keep)</label>
+      <input name="password" type="password">
+
+      <button type="submit">Save</button>
+      <a href="{{ url_for('manage_teachers') }}" class="cancel-btn">Cancel</a>
+
+    </form>
+  </div>
+</body>
+</html>

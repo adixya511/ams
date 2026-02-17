@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>View Attendance — Teacher</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  body{font-family:Poppins,Arial;background:linear-gradient(135deg,#0b1639,#010409);color:#fff;margin:0;padding:24px}
+  .wrap{max-width:1100px;margin:22px auto}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:16px;border-radius:12px}
+  .filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .filters input[type="date"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff}
+  .btn{background:linear-gradient(90deg,#06b6d4,#3b82f6);padding:8px 12px;border-radius:8px;color:#fff;border:none;cursor:pointer;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  thead th{padding:10px 12px;color:rgba(255,255,255,0.8);text-align:left;font-size:13px}
+  tbody td{padding:12px;border-top:1px solid rgba(255,255,255,0.03);font-size:14px}
+  .present{color:#48bb78;font-weight:700}
+  .absent{color:#f56565;font-weight:700}
+  .muted{color:rgba(255,255,255,0.7);font-size:13px}
+  @media (max-width:900px){.filters{flex-direction:column;align-items:stretch}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <h1 style="margin:0">View Attendance</h1>
+        <div class="muted">Subject: <strong>{{ selected_subject or '—' }}</strong> | Branch: <strong>{{ branch or '—' }}</strong> | Semester: <strong>{{ semester or '—' }}</strong></div>
+      </div>
+      <div>
+        <a href="{{ url_for('select_class_view') }}" class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7ff">← Back</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <form method="POST" class="filters" novalidate>
+        <label class="muted" style="margin-right:6px">Date</label>
+        <input type="date" name="selected_date" value="{{ selected_date or '' }}">
+        <button class="btn" type="submit">Apply</button>
+        <a href="{{ url_for('view_attendance', branch=branch, semester=semester) }}" class="muted" style="margin-left:auto;text-decoration:none">Reset</a>
+      </form>
+
+      {% if records %}
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Student</th><th>Roll / Email</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+              <tr>
+                <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+                <td>{{ r.student_obj.name if r.student_obj else ('#' ~ r.student_id) }}</td>
+                <td class="muted">{{ r.student_obj.roll_number if r.student_obj and r.student_obj.roll_number else r.student_obj.email if r.student_obj else r.student_id }}</td>
+                <td class="{{ 'present' if (r.status or '').lower()=='present' else 'absent' }}">{{ r.status }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted" style="padding:12px 0">No records found for the selected filters.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

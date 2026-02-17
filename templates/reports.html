@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Reports - Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body{font-family:Poppins,Arial,Helvetica;background:linear-gradient(135deg,#0b1639,#010409);color:#fff;padding:28px}
+    .wrap{max-width:1100px;margin:28px auto}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:18px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+    .row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+    .stat{flex:1;min-width:180px;padding:14px;border-radius:10px;background:#0f1833;text-align:center}
+    .stat .num{font-size:26px;font-weight:800;color:#3b82f6;margin-top:8px}
+    h1{margin:0 0 6px 0}
+    h2{margin:12px 0}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:10px 12px;text-align:left;border-top:1px solid rgba(255,255,255,0.03);font-size:14px}
+    thead th{color:rgba(255,255,255,0.8);font-weight:700;background:transparent}
+    tbody tr:hover td{background:linear-gradient(90deg,rgba(59,130,246,0.03),transparent)}
+    .muted{color:rgba(255,255,255,0.7);font-size:13px}
+    .label-good{color:#48bb78;font-weight:700}
+    .label-bad{color:#f56565;font-weight:700}
+    .small{font-size:13px;color:rgba(255,255,255,0.75)}
+    .actions{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+    a.back{color:#9fb7ff;text-decoration:none;font-weight:600}
+    @media (max-width:900px){.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h1>Admin Reports</h1>
+        <div class="muted">Overview and analytics</div>
+      </div>
+      <div class="actions">
+        <a class="back" href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="stat card">
+        <div class="small">Total Students</div>
+        <div class="num">{{ total_students }}</div>
+      </div>
+      <div class="stat card">
+        <div class="small">Total Teachers</div>
+        <div class="num">{{ total_teachers }}</div>
+      </div>
+      <div class="stat card">
+        <div class="small">Attendance Records</div>
+        <div class="num">{{ total_attendance }}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Attendance by Subject</h2>
+      {% if attendance_by_subject %}
+        <table>
+          <thead><tr><th>Subject</th><th>Total</th><th>Present</th><th>Present %</th></tr></thead>
+          <tbody>
+            {% for s in attendance_by_subject %}
+              <tr>
+                <td>{{ s.subject }}</td>
+                <td>{{ s.total }}</td>
+                <td>{{ s.present }}</td>
+                <td>{{ s.percentage }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted">No attendance data yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="card" style="flex:1;min-width:320px">
+        <h2>Attendance by Teacher</h2>
+        {% if attendance_by_teacher %}
+          <table>
+            <thead><tr><th>Teacher</th><th>Total</th><th>Present</th><th>Present %</th></tr></thead>
+            <tbody>
+              {% for t in attendance_by_teacher %}
+                <tr>
+                  <td>{{ t.teacher }}</td>
+                  <td>{{ t.total }}</td>
+                  <td>{{ t.present }}</td>
+                  <td>{{ t.percentage }}%</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="muted">No teacher attendance yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="card" style="flex:0.9;min-width:280px">
+        <h2>Lowest Attendance Students</h2>
+        {% if low_attendance %}
+          <table>
+            <thead><tr><th>Student</th><th>Total</th><th>Present</th><th>%</th></tr></thead>
+            <tbody>
+              {% for s in low_attendance %}
+                <tr>
+                  <td>{{ s.name }} <div class="small">{{ s.email }}</div></td>
+                  <td>{{ s.total }}</td>
+                  <td>{{ s.present }}</td>
+                  <td class="{{ 'label-bad' if s.percentage < 50 else 'label-good' }}">{{ s.percentage }}%</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="muted">No student attendance data yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Recent Attendance Entries</h2>
+      {% if recent_records %}
+        <table>
+          <thead><tr><th>Date</th><th>Student</th><th>Teacher</th><th>Subject</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for r in recent_records %}
+              <tr>
+                <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+                <td>{{ r.student_obj.name if r.student_obj else ('#' ~ r.student_id) }}</td>
+                <td>{{ r.teacher_obj.name if r.teacher_obj else ('#' ~ r.teacher_id) }}</td>
+                <td>{{ r.subject }}</td>
+                <td class="{{ 'label-good' if (r.status or '').lower()=='present' else 'label-bad' }}">{{ r.status }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted">No recent attendance.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>

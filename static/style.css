@@ -1,0 +1,155 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+/* Center page */
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(to right, #6a11cb, #2575fc);
+}
+
+/* Login box */
+.login-container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  width: 350px;
+  text-align: center;
+}
+
+.login-container h1 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.login-container p {
+  margin-bottom: 20px;
+  color: #666;
+}
+
+/* Form layout */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+label {
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+}
+
+input, select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  padding: 10px;
+  background: #2575fc;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background: #6a11cb;
+}
+
+#role-display {
+  margin-top: 15px;
+  font-weight: bold;
+  color: #444;
+}
+
+/* Manage Students page styles - theme matched to app (blue gradient, card, soft shadows) */
+body {
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  font-family: "Poppins", Arial, sans-serif;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.card h2 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.card p {
+  margin-bottom: 10px;
+  color: #666;
+}
+
+.card a {
+  color: #2575fc;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.card a:hover {
+  text-decoration: underline;
+}
+
+/* dark select styles for student pages & filters */
+.select-wrapper { position: relative; display: inline-block; width: 100%; max-width: 320px; }
+.select-wrapper select,
+.filters select,
+.controls select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  background-color: #0f1833; /* dark bg */
+  color: #fff;               /* white text */
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 40px 10px 14px; /* room for arrow */
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.select-wrapper::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-30%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #9fb7ff; /* arrow color */
+  pointer-events: none;
+}
+select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 6px 18px rgba(59,130,246,0.08);
+}
+select option {
+  background-color: #0f1833; /* some browsers respect this */
+  color: #fff;
+}
+/* small screens */
+@media (max-width:720px){
+  .select-wrapper { max-width: 100%; }
+}

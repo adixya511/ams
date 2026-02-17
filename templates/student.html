@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Dashboard</title>
+
+  <style>
+    :root {
+      --sidebar-bg: #060b23;
+      --main-bg: #0b1639;
+      --card-bg: #0f1833;
+      --panel-bg: #12183a;
+      --accent: linear-gradient(90deg, #06b6d4, #3b82f6);
+      --muted: rgba(255,255,255,0.75);
+      --accent-strong: #3b82f6;
+      --green: #48bb78;
+      --red: #f56565;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0b1639, #010409);
+      color: #fff;
+      font-family: "Poppins", sans-serif;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: var(--sidebar-bg);
+      height: 100vh;
+      padding: 22px;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+
+    .logo {
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .menu-link {
+      display: block;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--muted);
+      transition: 0.2s;
+    }
+
+    .menu-link:hover,
+    .menu-link.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .main {
+      margin-left: 220px;
+      padding: 28px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .user-box {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #2b6df6, #8b5cf6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: 700;
+    }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      padding: 18px;
+      border-radius: 12px;
+    }
+
+    .card-title {
+      opacity: 0.7;
+      font-size: 13px;
+    }
+
+    .card-value {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 5px;
+    }
+
+    .panel {
+      margin-top: 20px;
+      background: var(--panel-bg);
+      padding: 18px;
+      border-radius: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    select,
+    input[type="date"] {
+      padding: 8px;
+      background: rgba(255,255,255,0.08);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+    }
+
+    .btn {
+      background: var(--accent);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px;
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    td {
+      padding: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .present {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .absent {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .sub-card {
+      background: #101a3a;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">GPK KANGRA</div>
+
+    <a class="menu-link active" href="{{ url_for('student_dashboard') }}">🏠 Dashboard</a>
+    <a class="menu-link" href="{{ url_for('student_subjects') }}">📚 My Subjects</a>
+    <a class="menu-link" href="{{ url_for('student_subjects') }}">📖 My Classes</a>
+    <a class="menu-link" href="{{ url_for('logout') }}">🚪 Logout</a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="top-row">
+      <h2>Student Dashboard</h2>
+
+      <div class="user-box">
+        <div class="avatar">{{ student.name[0] }}</div>
+        <div>
+          <div>{{ student.name }}</div>
+          <div style="font-size:13px;opacity:0.7">{{ student.email }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="cards-row">
+
+      <div class="card">
+        <div class="card-title">Overall Attendance %</div>
+        <div class="card-value">{{ overall_percentage }}%</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Monthly Attendance %</div>
+        <div class="card-value">{{ monthly_percentage }}%</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Present (Filtered)</div>
+        <div class="card-value">
+          {{ records|length }}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Subjects</div>
+        <div class="card-value">{{ subjects|length }}</div>
+      </div>
+
+    </div>
+
+   
+    <!-- FILTER PANEL -->
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;">
+        <h3>Filter Attendance</h3>
+        <span style="opacity:0.7;font-size:13px">View attendance by subject or date</span>
+      </div>
+
+      <form method="POST" style="margin-top:10px">
+
+        <label>Subject</label><br />
+        <select name="subject" style="width:100%;margin-bottom:12px">
+          <option value="">All</option>
+          {% for s in subjects %}
+          <option value="{{ s }}" {% if selected_subject == s %}selected{% endif %}>
+            {{ s }}
+          </option>
+          {% endfor %}
+        </select>
+
+        <label>Date</label><br />
+        <input type="date" name="selected_date" value="{{ selected_date or '' }}" />
+
+        <button class="btn" style="margin-left:10px">Apply</button>
+
+        <a href="{{ url_for('student_dashboard') }}" style="margin-left:25px;font-size:13px;color:#6eaaff">Reset</a>
+      </form>
+    </div>
+
+    <!-- RECORDS -->
+    <div class="panel">
+      <h3>Attendance Records</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Subject</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.subject }}</td>
+
+            {% if r.status == 'Present' %}
+            <td class="present">{{ r.status }}</td>
+            {% else %}
+            <td class="absent">{{ r.status }}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+
+  </main>
+</body>
+</html>

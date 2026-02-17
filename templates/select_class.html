@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ page_title }}</title>
+  <style>
+    :root {
+      --bg-dark: #0b1639;
+      --panel-bg: rgba(255,255,255,0.06);
+      --border-color: rgba(255,255,255,0.15);
+      --header-bg: rgba(255,255,255,0.12);
+      --text-light: #ffffff;
+      --primary: #3b82f6;
+      --success: #4ade80;
+      --font-main: "Poppins", sans-serif;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-light);
+      font-family: var(--font-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      width: 500px;
+      background: var(--panel-bg);
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 14px;
+      color: #b0b9d4;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-light);
+      font-size: 14px;
+      font-family: var(--font-main);
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    select option {
+      background: #0b1639;
+      color: var(--text-light);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: var(--font-main);
+    }
+
+    .btn-submit {
+      background: var(--success);
+      color: black;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    .btn-back {
+      background: rgba(255,255,255,0.1);
+      color: var(--text-light);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-back:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .info-text {
+      color: #b0b9d4;
+      font-size: 13px;
+      margin-bottom: 25px;
+      margin-top: -15px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>{{ page_title }}</h2>
+    <p class="info-text">Select the branch and semester to continue</p>
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="branch">📚 Branch</label>
+        <select id="branch" name="branch" required>
+          <option value="">-- Select Branch --</option>
+          {% for br in branches %}
+            <option value="{{ br }}">{{ br }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="semester">📖 Semester</label>
+        <select id="semester" name="semester" required>
+          <option value="">-- Select Semester --</option>
+          {% for sem in semesters %}
+            <option value="{{ sem }}">{{ sem }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="btn-submit">Continue →</button>
+        <button type="button" class="btn-back" onclick="history.back()">Cancel</button>
+      </div>
+    </form>
+
+    <a class="back-link" href="{{ url_for('teacher_dashboard') }}">← Back to Dashboard</a>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edit Student</title>
+
+  <style>
+        body {
+            font-family: "Poppins";
+            background: #0b1639;
+            color: white;
+            display: flex;
+            padding-top: 40px;
+            justify-content: center;
+        }
+
+        .form-box {
+            background: rgba(255,255,255,0.08);
+            padding: 30px;
+            width: 400px;
+            border-radius: 12px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            background: #3b82f6;
+            padding: 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+        }
+
+        a {
+            color: #60a5fa;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+  <div class="form-box">
+        <h2>Edit Student</h2>
+
+        <form method="post" action="{{ url_for('edit_student', id=student.id) }}">
+            <label>Name</label>
+            <input type="text" name="name" value="{{ student.name }}" required>
+
+            <label>Roll Number</label>
+            <input type="text" name="roll_number" value="{{ student.roll_number }}" required>
+
+            <label>Email</label>
+            <input type="email" name="email" value="{{ student.email }}" required>
+
+            <label>New Password (optional)</label>
+            <input type="password" name="password">
+
+            <button type="submit">Update Student</button>
+        </form>
+
+        <a href="{{ url_for('manage_students') }}">← Back</a>
+    </div>
+</body>
+</html>

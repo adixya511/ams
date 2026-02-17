@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Classes</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body{
+      font-family:Poppins,Arial;
+      background:linear-gradient(135deg,#091431,#020611);
+      color:#fff;margin:0;padding:28px;
+    }
+
+    .wrap{max-width:1000px;margin:24px auto;animation:fadeIn 0.8s ease;}
+
+    h1{font-size:34px;font-weight:700;margin-bottom:6px;}
+
+    /* Card Styling */
+    .card{
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);
+      padding:24px;
+      border-radius:16px;
+      box-shadow:0 0 25px rgba(0,0,0,0.25);
+      backdrop-filter:blur(10px);
+      margin-top:20px;
+      animation:slideUp 0.7s ease;
+    }
+
+    /* Table */
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+    }
+
+    th,td{
+      padding:14px 12px;
+      text-align:left;
+      border-top:1px solid rgba(255,255,255,0.05);
+      font-size:15px;
+    }
+
+    thead th{
+      color:#a3b4ff;
+      font-weight:700;
+      font-size:16px;
+    }
+
+    /* Hover row animation */
+    tbody tr{
+      transition:0.25s;
+    }
+    tbody tr:hover{
+      background:rgba(255,255,255,0.06);
+      transform:scale(1.01);
+      cursor:pointer;
+    }
+
+    /* Percentage Badges */
+    .badge{
+      padding:6px 12px;
+      border-radius:12px;
+      font-weight:600;
+      display:inline-block;
+    }
+    .good{background:#113f27;border:1px solid #3ddc84;color:#3ddc84;}
+    .avg{background:#443f20;border:1px solid #ffd166;color:#ffd166;}
+    .bad{background:#4a1e1e;border:1px solid #ff6b6b;color:#ff6b6b;}
+
+    /* Back link */
+    .back{
+      color:#9fb7ff;
+      text-decoration:none;
+      font-size:15px;
+      transition:0.3s;
+    }
+    .back:hover{
+      color:#d1dcff;
+    }
+
+    /* Animations */
+    @keyframes fadeIn{
+      from{opacity:0;transform:translateY(10px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+    @keyframes slideUp{
+      from{opacity:0;transform:translateY(20px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+
+    <!-- Page Heading -->
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h1>My Classes</h1>
+        <div style="opacity:.8;font-size:17px">Student: <strong>{{ student.name }}</strong></div>
+      </div>
+      <div>
+        <a class="back" href="{{ url_for('student_dashboard') }}">← Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="card">
+      {% if classes_stats %}
+        <table>
+          <thead>
+            <tr>
+              <th>📘 Subject</th>
+              <th>Total Classes</th>
+              <th>Present</th>
+              <th>Attendance %</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for c in classes_stats %}
+              <tr>
+                <td>{{ c.subject }}</td>
+                <td>{{ c.total }}</td>
+                <td>{{ c.present }}</td>
+
+                <!-- Interactive Badges -->
+                <td>
+                  {% if c.percentage >= 75 %}
+                    <span class="badge good">{{ c.percentage }}%</span>
+                  {% elif c.percentage >= 40 %}
+                    <span class="badge avg">{{ c.percentage }}%</span>
+                  {% else %}
+                    <span class="badge bad">{{ c.percentage }}%</span>
+                  {% endif %}
+                </td>
+
+              </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+
+      {% else %}
+        <p style="opacity:.7;font-size:16px">No class records available.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login — Student Attendance System</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    :root{
+      --primary:#6366f1;
+      --primary-dark:#4f46e5;
+      --bg-gradient:linear-gradient(135deg,#0b1f4a,#020d1a);
+      --card-bg:rgba(255,255,255,0.10);
+      --border:rgba(255,255,255,0.15);
+      --text:#f8fafc;
+      --muted:#94a3b8;
+      --radius:14px;
+      --input-bg:rgba(255,255,255,0.08);
+      --input-border:rgba(255,255,255,0.12);
+    }
+
+    body{
+      margin:0;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:var(--bg-gradient);
+      font-family:"Poppins",sans-serif;
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    /* Soft animated background blur */
+    .bg-blur {
+      position:absolute;
+      width:400px;
+      height:400px;
+      background:#6366f1;
+      filter:blur(140px);
+      border-radius:50%;
+      opacity:0.35;
+      animation:float 8s infinite alternate ease-in-out;
+    }
+    .bg-blur2 {
+      position:absolute;
+      width:450px;
+      height:450px;
+      right:-120px;
+      bottom:-120px;
+      background:#3b82f6;
+      filter:blur(160px);
+      opacity:0.35;
+      border-radius:50%;
+      animation:float 9s infinite alternate-reverse ease-in-out;
+    }
+    @keyframes float {
+      0% { transform:translateY(0px) }
+      100% { transform:translateY(-40px) }
+    }
+
+    .card{
+      width:100%;
+      max-width:430px;
+      background:var(--card-bg);
+      backdrop-filter:blur(20px);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:34px 32px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.45);
+      position:relative;
+      z-index:2;
+      animation:fadeIn 0.8s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity:0; transform:translateY(20px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+
+    h1 {
+      margin:0;
+      font-size:26px;
+      font-weight:700;
+      text-align:center;
+      color:#fff;
+    }
+    p.lead{
+      margin:8px 0 24px;
+      text-align:center;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .flash{
+      background:rgba(239,68,68,0.15);
+      color:#f87171;
+      border:1px solid rgba(239,68,68,0.3);
+      padding:10px 12px;
+      border-radius:10px;
+      text-align:center;
+      margin-bottom:14px;
+      font-weight:600;
+    }
+
+    label{
+      font-size:14px;
+      color:var(--muted);
+      margin-bottom:6px;
+      display:block;
+    }
+
+    select,
+    input[type="email"],
+    input[type="password"]{
+      width:100%;
+      padding:11px 12px;
+      background:var(--input-bg);
+      border:1px solid var(--input-border);
+      border-radius:10px;
+      color:var(--text);
+      font-size:15px;
+      outline:none;
+      transition:0.2s;
+    }
+    select:focus,
+    input:focus{
+      border-color:var(--primary);
+      background:rgba(255,255,255,0.14);
+    }
+
+    .password-wrap{
+      position:relative;
+    }
+    .toggle-pass{
+      position:absolute;
+      top:50%;
+      right:12px;
+      transform:translateY(-50%);
+      border:none;
+      background:transparent;
+      color:#a5b4fc;
+      font-weight:600;
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    button.submit{
+      width:100%;
+      margin-top:8px;
+      padding:12px;
+      background:var(--primary);
+      border:none;
+      color:white;
+      font-size:15px;
+      font-weight:600;
+      border-radius:10px;
+      cursor:pointer;
+      transition:0.3s;
+      box-shadow:0 6px 18px rgba(99,102,241,0.35);
+    }
+    button.submit:hover{
+      background:var(--primary-dark);
+    }
+
+    .meta{
+      text-align:center;
+      margin-top:14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .meta span{ color:#fff; font-weight:600; }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- Soft background light effects -->
+  <div class="bg-blur"></div>
+  <div class="bg-blur2"></div>
+
+  <main class="card" aria-labelledby="login-title">
+
+    <h1 id="login-title">Student Attendance System</h1>
+    <p class="lead">Access your dashboard</p>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash">
+        {% for m in messages %}
+          {{ m }}{% if not loop.last %}<br>{% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('login') }}" method="post">
+
+      <!-- Role -->
+      <label for="role">Select Role</label>
+      <select id="role" name="role">
+        <option value="admin" {% if role=='admin' %}selected{% endif %}>Admin</option>
+        <option value="teacher" {% if role=='teacher' %}selected{% endif %}>Teacher</option>
+        <option value="student" {% if role=='student' %}selected{% endif %}>Student</option>
+      </select>
+
+      <!-- Email -->
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="you@example.com" required>
+
+      <!-- Password -->
+      <label for="password">Password</label>
+      <div class="password-wrap">
+        <input id="password" name="password" type="password" placeholder="Enter your password" required>
+        <button type="button" class="toggle-pass" id="togglePass">Show</button>
+      </div>
+
+      <button class="submit" type="submit">Login</button>
+    </form>
+
+    <p class="meta">You are logging in as: <span id="role-display">{{ role|capitalize }}</span></p>
+
+  </main>
+
+
+  <script>
+    // Role Display
+    const role = document.getElementById('role');
+    const rd = document.getElementById('role-display');
+    role.addEventListener('change', ()=> {
+      rd.textContent = role.value.charAt(0).toUpperCase() + role.value.slice(1);
+    });
+
+    // Show/Hide Password
+    const pass = document.getElementById('password');
+    const toggle = document.getElementById('togglePass');
+    toggle.addEventListener('click', ()=>{
+      const show = pass.type === "password";
+      pass.type = show ? "text" : "password";
+      toggle.textContent = show ? "Hide" : "Show";
+    });
+  </script>
+
+</body>
+</html>

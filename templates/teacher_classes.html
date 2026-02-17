@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Classes</title>
+
+  <style>
+    /* --- Base --- */
+    :root{
+      --bg:#071025;
+      --card:#0f1a2a;
+      --muted:#9fb8ff;
+      --accent:#0b63ff;
+      --glass:rgba(255,255,255,0.03);
+      --glass-2:rgba(255,255,255,0.02);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial;color:#e6f0ff;background:
+      radial-gradient(1200px 600px at 10% 10%, rgba(11,99,255,0.06), transparent 8%),
+      radial-gradient(1000px 500px at 90% 90%, rgba(0,0,0,0.18), transparent 10%),
+      var(--bg);padding:28px 36px;}
+    a{color:inherit;text-decoration:none}
+
+    /* --- Container / header --- */
+    .wrap{max-width:1100px;margin:0 auto}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}
+    .title{display:flex;flex-direction:column}
+    h1{font-size:40px;margin:0 0 6px 0;letter-spacing:-0.5px}
+    .sub{color:var(--muted);font-size:15px}
+
+    /* --- Toolbar --- */
+    .toolbar{display:flex;gap:12px;align-items:center}
+    .search{
+      display:flex;align-items:center;background:var(--glass);padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)
+    }
+    .search input{background:transparent;border:none;color:inherit;outline:none;width:240px;font-size:14px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:linear-gradient(180deg,#0b63ff,#0553d1);color:white;font-weight:600;border:none;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);font-weight:600}
+    .controls{display:flex;gap:8px;align-items:center}
+
+    /* --- Summary strip --- */
+    .summary{display:flex;gap:14px;margin-top:8px;margin-bottom:18px;flex-wrap:wrap}
+    .stat{background:linear-gradient(180deg,var(--glass),var(--glass-2));padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.02);font-size:14px;color:var(--muted)}
+    .stat strong{display:block;font-size:18px;color:#fff;margin-top:4px}
+
+    /* --- Grid & cards --- */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:8px}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:18px;border-radius:var(--radius);box-shadow:0 10px 30px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);transform:translateY(0);transition:transform .28s cubic-bezier(.2,.9,.2,1),box-shadow .28s;
+      position:relative;overflow:hidden;
+    }
+    .card:hover{transform:translateY(-8px);box-shadow:0 18px 40px rgba(2,6,23,0.7)}
+    .card .head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .subject{font-size:18px;font-weight:700}
+    .badge{font-size:12px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.02);color:var(--muted)}
+
+    .meta{color:var(--muted);font-size:13px;margin-top:10px}
+    .meta strong{color:#fff}
+    .last{font-size:13px;color:#a8c6ff;margin-top:10px}
+
+    .card .actions{display:flex;gap:10px;margin-top:14px}
+    .small{padding:8px 10px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);cursor:pointer}
+
+    /* progress */
+    .progress{height:10px;background:rgba(255,255,255,0.03);border-radius:999px;margin-top:12px;overflow:hidden}
+    .bar{height:100%;background:linear-gradient(90deg,var(--accent),#5cc0ff);width:0%;transition:width .8s ease}
+
+    /* empty */
+    .empty{padding:26px;border-radius:12px;text-align:center;color:#a8c6ff;background:rgba(255,255,255,0.01)}
+
+    /* responsive */
+    @media (max-width:600px){.search input{width:120px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">
+        <h1>My Classes</h1>
+        <div class="sub">Teacher: {{ teacher.name }} — Dashboard</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search" role="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="opacity:.8"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.4"/></svg>
+          <input id="search" placeholder="Search classes, e.g. Web Development" oninput="filterCards()" />
+        </div>
+
+        <div class="controls">
+          <button class="btn ghost" onclick="toggleView()">Toggle list</button>
+          <button class="btn" onclick="exportCSV()">Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary" id="summaryStrip">
+      <div class="stat">Classes <strong>{{ classes_info|length }}</strong></div>
+      <div class="stat">Total sessions <strong>{{ classes_info|sum(attribute='total_sessions') }}</strong></div>
+      <div class="stat">Active students <strong>{{ classes_info|sum(attribute='students_count') }}</strong></div>
+    </div>
+
+    {% if classes_info %}
+      <div class="grid" id="cards">
+        {% for c in classes_info %}
+        <div class="card" data-subject="{{ c.subject|lower }}">
+          <div class="head">
+            <div style="display:flex;align-items:center;gap:12px">
+              <!-- simple SVG icon -->
+              <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#07203d,rgba(11,99,255,0.06));display:flex;align-items:center;justify-content:center">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 7h18M3 12h18M3 17h18" stroke="#cfe0ff" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="subject">{{ c.subject }}</div>
+                <div class="badge">Teacher: {{ teacher.name }}</div>
+              </div>
+            </div>
+            <div class="badge">{{ c.students_count }} students</div>
+          </div>
+
+          <div class="meta">Sessions: <strong>{{ c.total_sessions }}</strong> &nbsp; • &nbsp; Students: <strong>{{ c.students_count }}</strong></div>
+
+          {% if c.last_date %}
+            <div class="last">Last session: {{ c.last_date }}</div>
+          {% else %}
+            <div class="last">No sessions recorded yet</div>
+          {% endif %}
+
+          <!-- subtle progress (visual only) -->
+          <div class="progress" aria-hidden>
+            <div class="bar" style="width:{{ ((c.students_count / (c.students_count + 2)) * 100)|round(0) if c.total_sessions > 0 else 12 }}%"></div>
+          </div>
+
+          <div class="actions">
+            <a class="small" href="{{ url_for('teacher_dashboard') }}">Open Dashboard</a>
+            <a class="small" href="{{ url_for('mark_attendance') }}">Mark Attendance</a>
+            <a class="small" href="{{ url_for('view_attendance') }}">View Records</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        No classes found. Add a subject in your profile or mark attendance to create a class entry.
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    // simple filter
+    function filterCards(){
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      document.querySelectorAll('#cards .card').forEach(card=>{
+        const subject = card.getAttribute('data-subject') || '';
+        card.style.display = (!q || subject.includes(q)) ? '' : 'none';
+      });
+    }
+
+    // toggle between grid / stacked list
+    let listMode = false;
+    function toggleView(){
+      listMode = !listMode;
+      const grid = document.getElementById('cards');
+      grid.style.gridTemplateColumns = listMode ? '1fr' : 'repeat(auto-fill,minmax(300px,1fr))';
+    }
+
+    // export CSV stub - collects classes data and downloads CSV
+    function exportCSV(){
+      const rows = [['Subject','Sessions','Students','Last Session']];
+      document.querySelectorAll('#cards .card').forEach(card=>{
+        const subj = card.querySelector('.subject')?.textContent?.trim() || '';
+        const sessions = card.querySelector('.meta strong')?.textContent || '';
+        const students = card.querySelector('.badge')?.textContent?.replace(' students','') || '';
+        const last = card.querySelector('.last')?.textContent.replace('Last session: ','') || '';
+        rows.push([subj,sessions,students,last]);
+      });
+      const csv = rows.map(r => r.map(cell => `"${(cell||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'classes.csv'; document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(url); a.remove();
+    }
+
+    // animate progress bars after paint
+    window.requestAnimationFrame(()=> {
+      document.querySelectorAll('.bar').forEach(b=>{
+        b.style.width = b.style.width; // trigger CSS transition
+      });
+    });
+  </script>
+</body>
+</html>

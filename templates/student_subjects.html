@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Subjects</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      font-family: Poppins, Arial;
+      background: linear-gradient(135deg,#0b1639,#010409);
+      color:#fff;
+      margin:0;
+      padding:28px;
+    }
+    .wrap {
+      max-width:900px;
+      margin:40px auto;
+    }
+    h1 {
+      font-size:36px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+    .card {
+      background:rgba(255,255,255,0.05);
+      padding:20px;
+      margin-bottom:18px;
+      border-radius:14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .subject {
+      font-size:20px;
+      font-weight:600;
+      margin-bottom:4px;
+    }
+    .meta {
+      font-size:14px;
+      opacity:0.8;
+    }
+    .actions button {
+      padding:8px 16px;
+      font-size:14px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      margin-left:8px;
+    }
+    .btn-main {
+      background:#3b82f6;
+      color:white;
+    }
+    .btn-ghost {
+      background:transparent;
+      border:1px solid #3b82f6;
+      color:#3b82f6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <h1>My Subjects</h1>
+    <div style="font-size:18px;margin-bottom:18px;">Student: {{ student.name }}</div>
+
+    {% if fallback %}
+      <div style="color:#9fb8ff;margin-bottom:12px">
+        You don't have attendance yet — showing all system subjects.
+      </div>
+    {% endif %}
+
+    {% for s in subjects_info %}
+      <div class="card">
+
+        <div class="left">
+          <div class="subject">{{ s.subject }}</div>
+          <div class="meta">
+            Teachers: {{ s.teachers or '—' }} • 
+            Total: {{ s.total_sessions }} • 
+            Present: {{ s.present_count }} • 
+            <strong style="color:{% if s.present_percent >= 75 %}lightgreen{% elif s.present_percent >= 40 %}#ffd166{% else %}#ff7b7b{% endif %}">
+  {{ s.present_percent }}%
+</strong>
+
+          </div>
+        </div>
+
+        <div class="actions">
+          <!-- FINAL WORKING BUTTON -->
+          <button class="btn-main" onclick="window.location.href='/student/classes'">
+              View stats
+          </button>
+
+          <button class="btn-ghost" onclick="downloadCSV('{{ s.subject }}')">Export</button>
+        </div>
+
+      </div>
+    {% endfor %}
+
+  </div>
+
+</body>
+</html>

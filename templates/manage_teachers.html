@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Teachers</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: "Poppins", sans-serif;
+            background: #0b1639;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .container {
+            width: 90%;
+            margin: auto;
+            background: rgba(255,255,255,0.05);
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: #121d3f;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #1f2a50;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #d2d7ff;
+        }
+
+        td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #2a3357;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .actions a {
+            text-decoration: none;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .edit-btn {
+            background: #3b82f6;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+        }
+
+        .add-btn {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .add-btn:hover {
+            background: #16a34a;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Manage Teachers</h1>
+
+    <div class="container">
+
+        <a href="{{ url_for('add_teacher') }}" class="add-btn">➕ Add New Teacher</a>
+
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Subject</th>
+                <th>Actions</th>
+            </tr>
+
+            {% for t in teachers %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td>{{ t.email }}</td>
+                <td>{{ t.department }}</td>
+                <td>{{ t.subject }}</td>
+                <td class="actions">
+                    <a href="{{ url_for('edit_teacher', id=t.id) }}" class="edit-btn">Edit</a>
+                    <a href="{{ url_for('delete_teacher', id=t.id) }}" class="delete-btn">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+    </div>
+
+</body>
+</html>
