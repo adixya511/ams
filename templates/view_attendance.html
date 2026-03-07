@@ -5,19 +5,180 @@
 <title>View Attendance — Teacher</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-  body{font-family:Poppins,Arial;background:linear-gradient(135deg,#0b1639,#010409);color:#fff;margin:0;padding:24px}
-  .wrap{max-width:1100px;margin:22px auto}
-  .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);padding:16px;border-radius:12px}
-  .filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-  .filters input[type="date"]{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff}
-  .btn{background:linear-gradient(90deg,#06b6d4,#3b82f6);padding:8px 12px;border-radius:8px;color:#fff;border:none;cursor:pointer;font-weight:700}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  thead th{padding:10px 12px;color:rgba(255,255,255,0.8);text-align:left;font-size:13px}
-  tbody td{padding:12px;border-top:1px solid rgba(255,255,255,0.03);font-size:14px}
-  .present{color:#48bb78;font-weight:700}
-  .absent{color:#f56565;font-weight:700}
-  .muted{color:rgba(255,255,255,0.7);font-size:13px}
-  @media (max-width:900px){.filters{flex-direction:column;align-items:stretch}}
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-light);
+    padding: 28px;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    color: var(--text-light);
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-top: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+  }
+
+  .filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .filters label {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-right: 6px;
+  }
+
+  .filters input[type="date"] {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  .filters input[type="date"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  .btn {
+    background: var(--primary);
+    padding: 10px 16px;
+    border-radius: 8px;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .btn:hover {
+    background: var(--primary-light);
+    box-shadow: var(--shadow-md);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+
+  thead {
+    background: var(--bg-darker);
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  thead th {
+    padding: 12px;
+    color: var(--text-light);
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  tbody td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-light);
+  }
+
+  tbody tr:hover {
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .present {
+    color: var(--success);
+    font-weight: 700;
+  }
+
+  .absent {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .muted {
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  a.btn {
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  a.btn[style*="transparent"] {
+    background: transparent !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--primary) !important;
+  }
+
+  a.btn[style*="transparent"]:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  a.muted {
+    color: var(--primary) !important;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  a.muted:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 900px) {
+    .filters {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .filters label {
+      margin-right: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -39,7 +200,13 @@
         <button class="btn" type="submit">Apply</button>
         <a href="{{ url_for('view_attendance', branch=branch, semester=semester) }}" class="muted" style="margin-left:auto;text-decoration:none">Reset</a>
       </form>
-
+<a href="{{ url_for('download_attendance_csv',
+    branch=branch,
+    semester=semester,
+    date=selected_date) }}"
+   style="background:green; color:white; padding:8px 12px; text-decoration:none; border-radius:5px;">
+   Download CSV
+</a>
       {% if records %}
         <table>
           <thead>

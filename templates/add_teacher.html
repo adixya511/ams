@@ -2,88 +2,170 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Teacher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
         body {
-            font-family: "Poppins";
-            background: #0b1639;
-            color: white;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f9fafb;
             display: flex;
-            padding-top: 40px;
+            align-items: center;
             justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
         }
 
-        .form-box {
-            background: rgba(255, 255, 255, 0.08);
-            padding: 30px;
-            width: 420px;
+        .form-card {
+            background: white;
             border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+        }
+
+        .form-header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .form-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .form-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            font-size: 14px;
         }
 
         input {
             width: 100%;
-            padding: 10px;
-            margin-top: 8px;
-            margin-bottom: 10px;
+            padding: 11px 13px;
+            border: 1px solid var(--border);
             border-radius: 8px;
-            border: none;
+            font-family: inherit;
+            font-size: 14px;
+            background: white;
+            color: var(--text-dark);
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
             outline: none;
-            background: rgba(255,255,255,0.2);
-            color: white;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
-        button {
-            margin-top: 20px;
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .submit-btn {
             width: 100%;
-            background: #22c55e;
             padding: 12px;
-            border-radius: 10px;
+            background: var(--success-gradient);
             color: white;
-            font-size: 16px;
             border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
             cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
         }
 
-        button:hover {
-            background: #16a34a;
+        .submit-btn:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
-        a {
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .back-link {
             text-decoration: none;
-            color: #60a5fa;
+            color: var(--primary);
             display: block;
-            margin-top: 15px;
+            margin-top: 16px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 
 <body>
-
-    <div class="form-box">
-        <h2>Add Teacher</h2>
+    <div class="form-card">
+        <div class="form-header">
+            <h2>Add New Teacher</h2>
+            <p>Register a new teacher in the system</p>
+        </div>
 
         <form method="post">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" placeholder="Full name" required>
+            </div>
 
-            <label>Name</label>
-            <input type="text" name="name" required>
+            <div class="form-group">
+                <label for="department">Department</label>
+                <input type="text" id="department" name="department" placeholder="e.g., Computer Science" required>
+            </div>
 
-            <label>Department</label>
-            <input type="text" name="department" required>
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" placeholder="e.g., Web Development" required>
+            </div>
 
-            <label>Subject</label>
-            <input type="text" name="subject" required>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="teacher@example.com" required>
+            </div>
 
-            <label>Email</label>
-            <input type="email" name="email" required>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a password" required>
+            </div>
 
-            <label>Password</label>
-            <input type="password" name="password" required>
-
-            <button type="submit">Add Teacher</button>
+            <button type="submit" class="submit-btn">➕ Add Teacher</button>
         </form>
 
-        <a href="{{ url_for('manage_teachers') }}">← Back</a>
+        <a href="{{ url_for('manage_teachers') }}" class="back-link">← Back to Teachers</a>
     </div>
 
 </body>

@@ -2,137 +2,262 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
-        :root {
-            --sidebar-bg: #060b23;
-            --main-bg: #0b1639;
-            --card-bg: #121d3f;
-            --accent-blue: #3b82f6;
-            --accent-green: #00e676;
-            --text-light: #d1d5ff;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            margin: 0;
-            font-family: "Poppins", sans-serif;
-            background: linear-gradient(135deg, #0b1639, #010409);
-            color: white;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-dark);
             display: flex;
+            height: 100vh;
         }
 
+        /* Sidebar */
         .sidebar {
-            width: 240px;
-            background: var(--sidebar-bg);
-            height: 100vh;
-            padding: 20px;
+            width: 260px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px 0;
             position: fixed;
             top: 0;
             left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
         }
 
         .logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
             font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 30px;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .menu-link {
-            display: block;
-            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: var(--text-muted);
             text-decoration: none;
-            color: var(--text-light);
-            border-radius: 10px;
-            margin-bottom: 10px;
-            transition: 0.2s;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            font-weight: 500;
+            font-size: 14px;
         }
 
-        .menu-link:hover,
-        .active {
-            background: linear-gradient(135deg, #3b82f6, #6366f1);
-            color: #fff;
+        .menu-link:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border-left-color: var(--primary);
         }
 
+        .menu-link.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        /* Main Content */
         .main {
-            margin-left: 240px;
-            padding: 30px;
-            width: calc(100% - 240px);
+            margin-left: 260px;
+            flex: 1;
+            overflow-y: auto;
+            background: var(--bg-dark);
+        }
+
+        .header {
+            background: var(--card-bg);
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
         }
 
         .dashboard-title {
             font-size: 28px;
-            margin-bottom: 20px;
-            font-weight: bold;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 32px;
         }
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
-        .card {
+        .stat-card {
             background: var(--card-bg);
-            padding: 20px;
-            border-radius: 14px;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .card-title {
-            font-size: 14px;
-            opacity: 0.7;
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
         }
 
-        .card-value {
-            font-size: 26px;
-            margin-top: 6px;
-            font-weight: bold;
+        .stat-card:nth-child(2)::before {
+            background: var(--success-gradient);
+        }
+
+        .stat-card:nth-child(3)::before {
+            background: var(--accent-warm-gradient);
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-card:nth-child(2) .stat-value {
+            color: var(--success);
+        }
+
+        .stat-card:nth-child(3) .stat-value {
+            color: var(--accent-warm);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(59, 130, 246, 0.1));
+        }
+
+        .stat-card:nth-child(2) .stat-icon {
+            background: linear-gradient(135deg, rgba(22, 163, 74, 0.15), rgba(34, 197, 94, 0.1));
+        }
+
+        .stat-card:nth-child(3) .stat-icon {
+            background: linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(249, 115, 22, 0.1));
+        }
+
+        /* Scrollbar */
+        .sidebar::-webkit-scrollbar,
+        .main::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .main::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .main::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .main::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
     </style>
 </head>
 
 <body>
-
     <!-- SIDEBAR -->
     <aside class="sidebar">
-        <div class="logo">GPK KANGRA</div>
+        <div class="logo">📚 Attendance</div>
 
         <a href="{{ url_for('admin_dashboard') }}" class="menu-link active">🏠 Dashboard</a>
         <a href="{{ url_for('manage_students') }}" class="menu-link">👨‍🎓 Manage Students</a>
         <a href="{{ url_for('manage_teachers') }}" class="menu-link">👨‍🏫 Manage Teachers</a>
-
-        <!-- FIXED THIS ↓↓↓ -->
         <a href="{{ url_for('reports') }}" class="menu-link">📊 Reports</a>
-
         <a href="{{ url_for('logout') }}" class="menu-link">🚪 Logout</a>
     </aside>
 
-    <!-- MAIN -->
+    <!-- MAIN CONTENT -->
     <main class="main">
-
-        <div class="dashboard-title">Admin Dashboard</div>
-
-        <div class="cards">
-
-            <div class="card">
-                <div class="card-title">Total Students</div>
-                <div class="card-value">{{ students|length }}</div>
+        <div class="header">
+            <h1 class="dashboard-title">Admin Dashboard</h1>
+            <div class="user-info">
+                <span style="font-weight: 500; font-size: 14px;">Admin Panel</span>
             </div>
-
-            <div class="card">
-                <div class="card-title">Total Teachers</div>
-                <div class="card-value">{{ teachers|length }}</div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Total Attendance Records</div>
-                <div class="card-value">{{ total_attendance }}</div>
-            </div>
-
         </div>
 
-    </main>
+        <div class="content">
+            <div class="cards">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👨‍🎓</div>
+                    <div class="stat-label">Total Students</div>
+                    <div class="stat-value">{{ students|length }}</div>
+                </div>
 
+                <div class="stat-card">
+                    <div class="stat-icon green">👨‍🏫</div>
+                    <div class="stat-label">Total Teachers</div>
+                    <div class="stat-value">{{ teachers|length }}</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon orange">📋</div>
+                    <div class="stat-label">Attendance Records</div>
+                    <div class="stat-value">{{ total_attendance }}</div>
+                </div>
+            </div>
+        </div>
+    </main>
 </body>
+
 </html>

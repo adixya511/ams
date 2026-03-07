@@ -1,51 +1,192 @@
-/* Reset */
+/* Modern Professional Dark Theme */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
 }
 
-/* Center page */
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1e40af;
+  --primary-light: #3b82f6;
+  --primary-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  --secondary: #06b6d4;
+  --secondary-gradient: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  --accent: #dc2626;
+  --accent-warm: #ea580c;
+  --accent-warm-gradient: linear-gradient(135deg, #ea580c 0%, #d97706 100%);
+  --success: #16a34a;
+  --success-gradient: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  --warning: #ca8a04;
+  --warning-gradient: linear-gradient(135deg, #ca8a04 0%, #b45309 100%);
+  --purple: #9333ea;
+  --purple-gradient: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+  --pink: #ec4899;
+  --pink-gradient: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  --indigo: #4f46e5;
+  --indigo-gradient: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  
+  --bg-dark: #f8fafc;
+  --bg-darker: #f1f5f9;
+  --card-bg: #ffffff;
+  --border-color: #e2e8f0;
+  
+  --text-light: #1e293b;
+  --text-muted: #64748b;
+  --text-dark: #334155;
+  
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --radius: 8px;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: linear-gradient(to right, #6a11cb, #2575fc);
+  font-family: var(--font-sans);
+  background: var(--bg-dark);
+  color: var(--text-light);
+  line-height: 1.6;
 }
 
-/* Login box */
-.login-container {
-  background: #fff;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
-  width: 350px;
-  text-align: center;
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
 }
 
-.login-container h1 {
-  margin-bottom: 10px;
-  color: #333;
+.btn-primary {
+  background: var(--primary);
+  color: white;
 }
 
-.login-container p {
-  margin-bottom: 20px;
-  color: #666;
+.btn-primary:hover {
+  background: var(--primary-light);
+  box-shadow: var(--shadow-md);
 }
 
-/* Form layout */
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.btn-secondary {
+  background: var(--card-bg);
+  color: var(--text-light);
+  border: 1px solid var(--border-color);
 }
+
+.btn-secondary:hover {
+  background: var(--border-color);
+  border-color: var(--primary);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  opacity: 0.9;
+}
+
+.btn-danger {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+/* Form Elements */
+input, select, textarea {
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--text-light);
+  transition: all 0.2s ease;
+}
+
+input::placeholder, select::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+select option {
+  background: var(--bg-dark);
+  color: var(--text-light);
+}
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: var(--bg-darker);
+  border-bottom: 2px solid var(--border-color);
+}
+
+th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-dark);
+}
+
+tbody tr:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-light);
+}
+
+h1 { font-size: 28px; }
+h2 { font-size: 24px; }
+h3 { font-size: 20px; }
+h4 { font-size: 16px; }
 
 label {
-  text-align: left;
-  font-size: 14px;
-  color: #333;
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text-light);
 }
 
 input, select {
