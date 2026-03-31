@@ -223,6 +223,8 @@
 
         <div class="page-actions">
             <a href="{{ url_for('add_teacher') }}" class="btn btn-success">➕ Add New Teacher</a>
+            <a href="{{ url_for('upload_users_csv') }}" class="btn">Upload CSV</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">Back to Dashboard</a>
         </div>
 
         {% if teachers %}

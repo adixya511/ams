@@ -68,7 +68,7 @@
             font-size: 14px;
         }
 
-        input {
+        input, select {
             width: 100%;
             padding: 11px 13px;
             border: 1px solid var(--border);
@@ -80,7 +80,7 @@
             transition: all 0.2s ease;
         }
 
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: var(--primary-light);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -144,12 +144,16 @@
 
             <div class="form-group">
                 <label for="department">Department</label>
-                <input type="text" id="department" name="department" placeholder="e.g., Computer Science" required>
+                <input type="text" id="department" name="department" placeholder="e.g., Computer Engineering" required>
             </div>
 
             <div class="form-group">
-                <label for="subject">Subject</label>
-                <input type="text" id="subject" name="subject" placeholder="e.g., Web Development" required>
+                <label for="semester">Semester</label>
+                <select id="semester" name="semester" required>
+                    {% for sem in semesters %}
+                        <option value="{{ sem }}">Semester {{ sem }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="form-group">

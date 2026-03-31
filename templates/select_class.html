@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -155,11 +155,11 @@
 <body>
   <div class="container">
     <h2>{{ page_title }}</h2>
-    <p class="info-text">Select the branch and semester to continue</p>
+    <p class="info-text">Select the branch, semester, and subject to continue</p>
 
     <form method="POST">
       <div class="form-group">
-        <label for="branch">📚 Branch</label>
+        <label for="branch">Branch</label>
         <select id="branch" name="branch" required>
           <option value="">-- Select Branch --</option>
           {% for br in branches %}
@@ -169,7 +169,7 @@
       </div>
 
       <div class="form-group">
-        <label for="semester">📖 Semester</label>
+        <label for="semester">Semester</label>
         <select id="semester" name="semester" required>
           <option value="">-- Select Semester --</option>
           {% for sem in semesters %}
@@ -178,13 +178,23 @@
         </select>
       </div>
 
+      <div class="form-group">
+        <label for="subject">Subject</label>
+        <select id="subject" name="subject" required>
+          <option value="">-- Select Subject --</option>
+          {% for sub in subjects %}
+            <option value="{{ sub }}">{{ sub }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
       <div class="button-group">
-        <button type="submit" class="btn-submit">Continue →</button>
+        <button type="submit" class="btn-submit">Continue -></button>
         <button type="button" class="btn-back" onclick="history.back()">Cancel</button>
       </div>
     </form>
 
-    <a class="back-link" href="{{ url_for('teacher_dashboard') }}">← Back to Dashboard</a>
+    <a class="back-link" href="{{ url_for('teacher_dashboard') }}">Back to Dashboard</a>
   </div>
 </body>
 

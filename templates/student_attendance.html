@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -201,10 +201,10 @@
     <div class="header">
       <div>
         <div class="title">My Attendance</div>
-        <div class="meta">Student: <strong>{{ student.name }}</strong> — <span class="small">{{ student.email }}</span></div>
+        <div class="meta">Student: <strong>{{ student.name }}</strong> - <span class="small">{{ student.email }}</span></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <a href="{{ url_for('student_dashboard') }}" class="small" style="color:#9fb7ff;text-decoration:none">← Dashboard</a>
+        <a href="{{ url_for('student_dashboard') }}" class="small" style="color:#9fb7ff;text-decoration:none">Dashboard</a>
       </div>
     </div>
 
@@ -225,7 +225,7 @@
             {% for r in records %}
               <tr>
                 <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
-                <td>{{ r.subject or '—' }}</td>
+                <td>{{ r.display_subject or r.subject or '—' }}</td>
                 <td>{{ r.teacher_obj.name if r.teacher_obj else ('#' ~ (r.teacher_id or '')) }}</td>
                 <td>
                   <span class="status {% if (r.status or '').lower()=='present' %}present{% else %}absent{% endif %}">

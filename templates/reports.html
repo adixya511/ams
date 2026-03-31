@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -171,6 +171,35 @@
       align-items: center;
       justify-content: flex-end;
     }
+    .filters {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filters select {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-dark);
+      color: var(--text-light);
+      min-width: 180px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--primary);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--primary);
+    }
 
     a.back {
       color: var(--primary);
@@ -215,12 +244,37 @@
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
         <h1>Admin Reports</h1>
-        <div class="muted">Overview and analytics</div>
+        <div class="muted">
+          Overview and analytics
+          {% if selected_branch or selected_semester %}
+            | Filter:
+            {{ selected_branch if selected_branch else 'All Branches' }}
+            /
+            Semester {{ selected_semester if selected_semester else 'All' }}
+          {% endif %}
+        </div>
       </div>
       <div class="actions">
-        <a class="back" href="{{ url_for('admin_dashboard') }}">← Back to Dashboard</a>
+        <a class="back" href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
       </div>
     </div>
+
+    <form method="GET" class="filters">
+      <select name="branch">
+        <option value="">All Branches</option>
+        {% for b in branch_options %}
+          <option value="{{ b }}" {% if selected_branch == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+      <select name="semester">
+        <option value="">All Semesters</option>
+        {% for sem in semester_options %}
+          <option value="{{ sem }}" {% if selected_semester == sem %}selected{% endif %}>Semester {{ sem }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn">Apply</button>
+      <a href="{{ url_for('reports') }}" class="btn btn-ghost">Reset</a>
+    </form>
 
     <div class="row" style="margin-top:14px">
       <div class="stat card">
@@ -313,7 +367,7 @@
                 <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
                 <td>{{ r.student_obj.name if r.student_obj else ('#' ~ r.student_id) }}</td>
                 <td>{{ r.teacher_obj.name if r.teacher_obj else ('#' ~ r.teacher_id) }}</td>
-                <td>{{ r.subject }}</td>
+                <td>{{ r.display_subject or r.subject }}</td>
                 <td class="{{ 'label-good' if (r.status or '').lower()=='present' else 'label-bad' }}">{{ r.status }}</td>
               </tr>
             {% endfor %}

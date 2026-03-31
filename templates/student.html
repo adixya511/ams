@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -349,10 +349,11 @@
   <aside class="sidebar">
     <div class="logo">GPK KANGRA</div>
 
-    <a class="menu-link active" href="{{ url_for('student_dashboard') }}">🏠 Dashboard</a>
-    <a class="menu-link" href="{{ url_for('student_subjects') }}">📚 My Subjects</a>
-    <a class="menu-link" href="{{ url_for('student_subjects') }}">📖 My Classes</a>
-    <a class="menu-link" href="{{ url_for('logout') }}">🚪 Logout</a>
+    <a class="menu-link active" href="{{ url_for('student_dashboard') }}">Dashboard</a>
+    <a class="menu-link" href="{{ url_for('student_subjects') }}">My Branches</a>
+    <a class="menu-link" href="{{ url_for('student_subjects') }}">Branch Stats</a>
+    <a class="menu-link" href="{{ url_for('student_change_password') }}">Change Password</a>
+    <a class="menu-link" href="{{ url_for('logout') }}">Logout</a>
   </aside>
 
   <!-- MAIN -->
@@ -391,8 +392,8 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Subjects</div>
-        <div class="card-value">{{ subjects|length }}</div>
+        <div class="card-title">Branches</div>
+        <div class="card-value">{{ branches|length }}</div>
       </div>
 
     </div>
@@ -402,17 +403,17 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;">
         <h3>Filter Attendance</h3>
-        <span style="opacity:0.7;font-size:13px">View attendance by subject or date</span>
+        <span style="opacity:0.7;font-size:13px">View attendance by branch or date</span>
       </div>
 
       <form method="POST" style="margin-top:10px">
 
-        <label>Subject</label><br />
-        <select name="subject" style="width:100%;margin-bottom:12px">
+        <label>Branch</label><br />
+        <select name="branch" style="width:100%;margin-bottom:12px">
           <option value="">All</option>
-          {% for s in subjects %}
-          <option value="{{ s }}" {% if selected_subject == s %}selected{% endif %}>
-            {{ s }}
+          {% for b in branches %}
+          <option value="{{ b }}" {% if selected_branch == b %}selected{% endif %}>
+            {{ b }}
           </option>
           {% endfor %}
         </select>
@@ -434,7 +435,7 @@
         <thead>
           <tr>
             <th>Date</th>
-            <th>Subject</th>
+            <th>Branch</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -443,7 +444,7 @@
           {% for r in records %}
           <tr>
             <td>{{ r.date }}</td>
-            <td>{{ r.subject }}</td>
+            <td>{{ r.branch or '—' }}</td>
 
             {% if r.status == 'Present' %}
             <td class="present">{{ r.status }}</td>
@@ -460,3 +461,4 @@
   </main>
 </body>
 </html>
+

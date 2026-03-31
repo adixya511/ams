@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -146,6 +146,47 @@
     margin-bottom: 24px;
   }
 
+  .date-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .date-row label {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .date-row input[type="date"] {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  .btn-load {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .edit-hint {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
   .btn-mark-all {
     background: var(--primary-gradient);
     color: white;
@@ -193,13 +234,25 @@
 
 <div class="container">
 
-    <h2>Mark Attendance <span style="opacity: .8;">(Subject: {{ teacher.subject }}, Branch: {{ branch }}, Semester: {{ semester }})</span></h2>
+    <h2>Mark Attendance <span style="opacity: .8;">(Subject: {{ subject or '—' }}, Branch: {{ branch }}, Semester: {{ semester }})</span></h2>
 
     <form method="POST">
+        <div class="date-row">
+            <label for="attendance_date">Attendance Date</label>
+            <input id="attendance_date" type="date" name="attendance_date" value="{{ selected_date }}">
+            <button type="button" class="btn-load" onclick="loadAttendanceForDate()">Load Date for Edit</button>
+        </div>
+        <p class="edit-hint">
+          {% if existing_count and existing_count > 0 %}
+            Edit mode: {{ existing_count }} existing attendance entries loaded for {{ selected_date }}.
+          {% else %}
+            No saved attendance found for {{ selected_date }}. You can create new entries.
+          {% endif %}
+        </p>
 
         <div class="button-group">
-            <button type="button" class="btn-mark-all" onclick="markAllPresent()">✓ Mark All Present</button>
-            <button type="button" class="btn-mark-all" style="background: var(--danger);" onclick="markAllAbsent()">✗ Mark All Absent</button>
+            <button type="button" class="btn-mark-all" onclick="markAllPresent()">Mark All Present</button>
+            <button type="button" class="btn-mark-all" style="background: var(--danger);" onclick="markAllAbsent()">Mark All Absent</button>
         </div>
 
         <table>
@@ -216,11 +269,13 @@
                     <td>{{ s.name }}</td>
 
                     <td>
-                        <input type="radio" name="{{ s.id }}" value="Present">
+                        <input type="radio" name="{{ s.id }}" value="Present"
+                               {% if existing_status_map.get(s.id) == 'present' %}checked{% endif %}>
                     </td>
 
                     <td>
-                        <input type="radio" name="{{ s.id }}" value="Absent">
+                        <input type="radio" name="{{ s.id }}" value="Absent"
+                               {% if existing_status_map.get(s.id) == 'absent' %}checked{% endif %}>
                     </td>
                 </tr>
                 {% endfor %}
@@ -231,11 +286,23 @@
 
     </form>
 
-    <a class="back-link" href="{{ url_for('select_class_mark') }}">← Back</a>
+    <a class="back-link" href="{{ url_for('select_class_mark') }}">Back</a>
 
 </div>
 
 <script>
+  function loadAttendanceForDate() {
+    const dateInput = document.getElementById('attendance_date');
+    const pickedDate = (dateInput && dateInput.value) ? dateInput.value : '';
+    const current = new URL(window.location.href);
+    if (pickedDate) {
+      current.searchParams.set('attendance_date', pickedDate);
+    } else {
+      current.searchParams.delete('attendance_date');
+    }
+    window.location.href = current.toString();
+  }
+
   function markAllPresent() {
     const radios = document.querySelectorAll('input[type="radio"][value="Present"]');
     radios.forEach(radio => {
@@ -253,3 +320,4 @@
 
 </body>
 </html>
+

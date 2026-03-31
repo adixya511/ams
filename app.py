@@ -43,7 +43,6 @@ class User(db.Model):
 
     # Teacher fields
     department = db.Column(db.String(100), nullable=True)
-    subject = db.Column(db.String(100), nullable=True)
 
 
 class Attendance(db.Model):
@@ -65,6 +64,29 @@ class Attendance(db.Model):
     teacher = db.relationship(
         "User", foreign_keys=[teacher_id], backref="attendance_as_teacher"
     )
+
+
+def roll_sort_key(roll_value):
+    s = (roll_value or "").strip()
+    if s.isdigit():
+        return (0, int(s), "")
+    return (1, 0, s.lower())
+
+
+def normalize_subject_name(subject_value):
+    s = (subject_value or "").strip()
+    if not s:
+        return "Unknown"
+    if s.lower() == "computer science":
+        return "Computer Engineering"
+    return s
+
+
+def subject_match_values(subject_value):
+    s = normalize_subject_name(subject_value)
+    if s == "Computer Engineering":
+        return ["Computer Engineering", "Computer Science"]
+    return [s]
 
 
 # ---------------- ROOT ----------------
@@ -254,13 +276,22 @@ def add_teacher():
             password=generate_password_hash(request.form["password"]),
             role="teacher",
             department=request.form["department"],
-            subject=request.form["subject"],
+            semester=(request.form.get("semester") or "").strip() or None,
         )
         db.session.add(t)
         db.session.commit()
         return redirect(url_for("manage_teachers"))
 
-    return render_template("add_teacher.html")
+    semesters = sorted(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+            if (row[0] or "").strip()
+        }
+    )
+    if not semesters:
+        semesters = [str(i) for i in range(1, 9)]
+    return render_template("add_teacher.html", semesters=semesters)
 
 
 @app.route("/admin/teacher/edit/<int:id>", methods=["GET", "POST"])
@@ -275,11 +306,20 @@ def edit_teacher(id):
         if pwd:
             teacher.password = generate_password_hash(pwd)
         teacher.department = request.form.get("department", teacher.department)
-        teacher.subject = request.form.get("subject", teacher.subject)
+        teacher.semester = (request.form.get("semester") or "").strip() or None
         db.session.commit()
         flash("Teacher updated.")
         return redirect(url_for("manage_teachers"))
-    return render_template("edit_teacher.html", teacher=teacher)
+    semesters = sorted(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+            if (row[0] or "").strip()
+        }
+    )
+    if not semesters:
+        semesters = [str(i) for i in range(1, 9)]
+    return render_template("edit_teacher.html", teacher=teacher, semesters=semesters)
 
 
 @app.route("/admin/teacher/delete/<int:id>")
@@ -292,6 +332,80 @@ def delete_teacher(id):
     return redirect(url_for("manage_teachers"))
 
 
+@app.route("/admin/upload-users-csv", methods=["GET", "POST"])
+def upload_users_csv():
+    if session.get("role") != "admin":
+        abort(403)
+
+    if request.method == "POST":
+        f = request.files.get("csv_file")
+        if not f or not f.filename:
+            flash("Please choose a CSV file.")
+            return redirect(url_for("upload_users_csv"))
+
+        try:
+            content = f.read().decode("utf-8-sig", errors="replace")
+            reader = csv.DictReader(StringIO(content))
+        except Exception:
+            flash("Unable to read CSV file. Please upload a valid UTF-8 CSV.")
+            return redirect(url_for("upload_users_csv"))
+
+        required_headers = {"role", "name", "email", "password"}
+        headers = set([h.strip().lower() for h in (reader.fieldnames or []) if h])
+        if not required_headers.issubset(headers):
+            flash(
+                "CSV must contain headers: role,name,email,password (plus optional fields)."
+            )
+            return redirect(url_for("upload_users_csv"))
+
+        created = 0
+        skipped = 0
+        errors = 0
+
+        for row in reader:
+            role = (row.get("role") or "").strip().lower()
+            name = (row.get("name") or "").strip()
+            email = (row.get("email") or "").strip().lower()
+            password = (row.get("password") or "").strip()
+
+            if role not in {"student", "teacher"} or not name or not email or not password:
+                errors += 1
+                continue
+
+            if User.query.filter(func.lower(User.email) == email).first():
+                skipped += 1
+                continue
+
+            if role == "student":
+                u = User(
+                    role="student",
+                    name=name,
+                    email=email,
+                    password=generate_password_hash(password),
+                    roll_number=(row.get("roll_number") or "").strip() or None,
+                    branch=(row.get("branch") or "").strip() or None,
+                    semester=(row.get("semester") or "").strip() or None,
+                )
+            else:
+                u = User(
+                    role="teacher",
+                    name=name,
+                    email=email,
+                    password=generate_password_hash(password),
+                    department=(row.get("department") or "").strip() or None,
+                    semester=(row.get("semester") or "").strip() or None,
+                )
+
+            db.session.add(u)
+            created += 1
+
+        db.session.commit()
+        flash(f"Upload complete. Created: {created}, Skipped(existing): {skipped}, Invalid rows: {errors}")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template("upload_users_csv.html")
+
+
 # ---------------- TEACHER ----------------
 @app.route("/teacher")
 def teacher_dashboard():
@@ -299,7 +413,51 @@ def teacher_dashboard():
         abort(403)
     teacher = User.query.get(session["user_id"])
     students = User.query.filter_by(role="student").all()
-    return render_template("teacher.html", teacher=teacher, students=students)
+    branches = sorted(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(User.branch).filter_by(role="student").distinct().all()
+            if (row[0] or "").strip()
+        }
+    )
+    semesters = sorted(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+            if (row[0] or "").strip()
+        }
+    )
+    return render_template(
+        "teacher.html",
+        teacher=teacher,
+        students=students,
+        branches=branches,
+        semesters=semesters,
+    )
+
+
+@app.route("/teacher/quick-action", methods=["POST"])
+def teacher_quick_action():
+    if session.get("role") != "teacher":
+        abort(403)
+
+    branch = (request.form.get("branch") or "").strip()
+    semester = (request.form.get("semester") or "").strip()
+    action = (request.form.get("action") or "").strip()
+
+    if not branch or not semester:
+        flash("Please select both branch and semester.")
+        return redirect(url_for("teacher_dashboard"))
+
+    if action == "mark":
+        return redirect(url_for("mark_attendance", branch=branch, semester=semester))
+    if action == "view":
+        return redirect(url_for("view_attendance", branch=branch, semester=semester))
+    if action == "overall":
+        return redirect(url_for("overall_attendance", branch=branch, semester=semester))
+
+    flash("Invalid action selected.")
+    return redirect(url_for("teacher_dashboard"))
 
 
 # SELECT BRANCH AND SEMESTER FOR MARKING
@@ -311,16 +469,33 @@ def select_class_mark():
     if request.method == "POST":
         branch = request.form.get("branch")
         semester = request.form.get("semester")
-        return redirect(url_for("mark_attendance", branch=branch, semester=semester))
+        subject = (request.form.get("subject") or "").strip()
+        return redirect(
+            url_for("mark_attendance", branch=branch, semester=semester, subject=subject)
+        )
 
     # Get unique branches and semesters from students
     branches = db.session.query(User.branch).filter_by(role="student").distinct().all()
     semesters = (
         db.session.query(User.semester).filter_by(role="student").distinct().all()
     )
+    teacher = User.query.get(session["user_id"])
+    subjects = set()
+    if teacher and teacher.department:
+        subjects.add(normalize_subject_name(teacher.department))
+    for row in (
+        db.session.query(Attendance.subject)
+        .filter(Attendance.teacher_id == session["user_id"])
+        .distinct()
+        .all()
+    ):
+        s = normalize_subject_name(row[0])
+        if s:
+            subjects.add(s)
 
     branches = sorted([b[0] for b in branches if b[0]])
     semesters = sorted([s[0] for s in semesters if s[0]])
+    subjects = sorted(subjects, key=lambda x: x.lower())
 
     return render_template(
         "select_class.html",
@@ -328,6 +503,7 @@ def select_class_mark():
         action="mark_attendance",
         branches=branches,
         semesters=semesters,
+        subjects=subjects,
     )
 
 
@@ -340,16 +516,33 @@ def select_class_view():
     if request.method == "POST":
         branch = request.form.get("branch")
         semester = request.form.get("semester")
-        return redirect(url_for("view_attendance", branch=branch, semester=semester))
+        subject = (request.form.get("subject") or "").strip()
+        return redirect(
+            url_for("view_attendance", branch=branch, semester=semester, subject=subject)
+        )
 
     # Get unique branches and semesters from students
     branches = db.session.query(User.branch).filter_by(role="student").distinct().all()
     semesters = (
         db.session.query(User.semester).filter_by(role="student").distinct().all()
     )
+    teacher = User.query.get(session["user_id"])
+    subjects = set()
+    if teacher and teacher.department:
+        subjects.add(normalize_subject_name(teacher.department))
+    for row in (
+        db.session.query(Attendance.subject)
+        .filter(Attendance.teacher_id == session["user_id"])
+        .distinct()
+        .all()
+    ):
+        s = normalize_subject_name(row[0])
+        if s:
+            subjects.add(s)
 
     branches = sorted([b[0] for b in branches if b[0]])
     semesters = sorted([s[0] for s in semesters if s[0]])
+    subjects = sorted(subjects, key=lambda x: x.lower())
 
     return render_template(
         "select_class.html",
@@ -357,6 +550,48 @@ def select_class_view():
         action="view_attendance",
         branches=branches,
         semesters=semesters,
+        subjects=subjects,
+    )
+
+
+@app.route("/teacher/select-class-overall", methods=["GET", "POST"])
+def select_class_overall():
+    if session.get("role") != "teacher":
+        abort(403)
+
+    if request.method == "POST":
+        branch = request.form.get("branch")
+        semester = request.form.get("semester")
+        return redirect(url_for("overall_attendance", branch=branch, semester=semester))
+
+    branches = db.session.query(User.branch).filter_by(role="student").distinct().all()
+    semesters = (
+        db.session.query(User.semester).filter_by(role="student").distinct().all()
+    )
+    teacher = User.query.get(session["user_id"])
+    subjects = set()
+    if teacher and teacher.department:
+        subjects.add(normalize_subject_name(teacher.department))
+    for row in (
+        db.session.query(Attendance.subject)
+        .filter(Attendance.teacher_id == session["user_id"])
+        .distinct()
+        .all()
+    ):
+        s = normalize_subject_name(row[0])
+        if s:
+            subjects.add(s)
+    branches = sorted([b[0] for b in branches if b[0]])
+    semesters = sorted([s[0] for s in semesters if s[0]])
+    subjects = sorted(subjects, key=lambda x: x.lower())
+
+    return render_template(
+        "select_class.html",
+        page_title="Select Branch & Semester",
+        action="overall_attendance",
+        branches=branches,
+        semesters=semesters,
+        subjects=subjects,
     )
 
 
@@ -367,22 +602,55 @@ def mark_attendance():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
-
     if not branch or not semester:
         return redirect(url_for("select_class_mark"))
 
     teacher = User.query.get(session["user_id"])
+    selected_subject = (
+        (request.args.get("subject") or "").strip()
+        or (
+            normalize_subject_name(teacher.department)
+            if teacher and teacher.department
+            else None
+        )
+    )
     students = User.query.filter_by(
         role="student", branch=branch, semester=semester
     ).all()
 
+    selected_date = date.today()
+    if request.method == "GET":
+        sd = (request.args.get("attendance_date") or "").strip()
+        if sd:
+            try:
+                selected_date = date.fromisoformat(sd)
+            except Exception:
+                selected_date = date.today()
+
+    existing_status_map = {}
+    existing_rows = Attendance.query.filter_by(
+        date=selected_date,
+        teacher_id=teacher.id,
+        subject=selected_subject,
+        branch=branch,
+        semester=semester,
+    ).all()
+    for row in existing_rows:
+        existing_status_map[row.student_id] = (row.status or "").strip().lower()
+    existing_count = len(existing_rows)
+
     if request.method == "POST":
-        today = date.today()
+        sd = (request.form.get("attendance_date") or "").strip()
+        if sd:
+            try:
+                selected_date = date.fromisoformat(sd)
+            except Exception:
+                selected_date = date.today()
 
         Attendance.query.filter_by(
-            date=today,
+            date=selected_date,
             teacher_id=teacher.id,
-            subject=teacher.subject,
+            subject=selected_subject,
             branch=branch,
             semester=semester,
         ).delete()
@@ -394,25 +662,28 @@ def mark_attendance():
                     Attendance(
                         student_id=s.id,
                         teacher_id=teacher.id,
-                        subject=teacher.subject,
+                        subject=selected_subject,
                         branch=branch,
                         semester=semester,
-                        date=today,
+                        date=selected_date,
                         status=status,
                     )
                 )
 
         db.session.commit()
-        flash("Attendance Marked!")
+        flash(f"Attendance marked for {selected_date.isoformat()}!")
         return redirect(url_for("teacher_dashboard"))
 
     return render_template(
         "mark_attendance.html",
         students=students,
-        subject=teacher.subject,
+        subject=selected_subject,
         teacher=teacher,
         branch=branch,
         semester=semester,
+        selected_date=selected_date.isoformat(),
+        existing_status_map=existing_status_map,
+        existing_count=existing_count,
     )
 
 
@@ -431,46 +702,254 @@ def view_attendance():
     teacher = User.query.get(session.get("user_id"))
 
     # teacher's subject is fixed — do not allow choosing other subjects
-    selected_subject = teacher.subject if teacher and teacher.subject else None
+    selected_subject = (
+        (request.args.get("subject") or "").strip()
+        or (
+            normalize_subject_name(teacher.department)
+            if teacher and teacher.department
+            else None
+        )
+    )
 
-    # read date filter only
-    selected_date = None
+    # read date range filters
+    from_date = None
+    to_date = None
     if request.method == "POST":
-        sd = (request.form.get("selected_date") or "").strip()
-        if sd:
+        fd = (request.form.get("from_date") or "").strip()
+        td = (request.form.get("to_date") or "").strip()
+        if fd:
             try:
-                selected_date = date.fromisoformat(sd)
+                from_date = date.fromisoformat(fd)
             except Exception:
-                selected_date = None
+                from_date = None
+        if td:
+            try:
+                to_date = date.fromisoformat(td)
+            except Exception:
+                to_date = None
     else:
-        sd = request.args.get("date", "").strip()
-        if sd:
+        fd = request.args.get("from_date", "").strip()
+        td = request.args.get("to_date", "").strip()
+        if fd:
             try:
-                selected_date = date.fromisoformat(sd)
+                from_date = date.fromisoformat(fd)
             except Exception:
-                selected_date = None
+                from_date = None
+        if td:
+            try:
+                to_date = date.fromisoformat(td)
+            except Exception:
+                to_date = None
+
+    # normalize inverted date range
+    if from_date and to_date and from_date > to_date:
+        from_date, to_date = to_date, from_date
 
     # build query — filter by teacher, teacher's subject, branch and semester
-    q = Attendance.query.filter_by(
+    base_query = Attendance.query.filter_by(
         teacher_id=teacher.id, branch=branch, semester=semester
     )
     if selected_subject:
-        q = q.filter_by(subject=selected_subject)
-    if selected_date:
-        q = q.filter_by(date=selected_date)
+        base_query = base_query.filter_by(subject=selected_subject)
+
+    q = base_query
+    if from_date:
+        q = q.filter(Attendance.date >= from_date)
+    if to_date:
+        q = q.filter(Attendance.date <= to_date)
 
     records = q.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
     for r in records:
         r.student_obj = User.query.get(r.student_id)
 
+    # per-student overall summary for selected range (include all students in class)
+    class_students = User.query.filter_by(
+        role="student", branch=branch, semester=semester
+    ).all()
+    counts_by_student = {}
+    for r in records:
+        c = counts_by_student.setdefault(r.student_id, {"total": 0, "present": 0})
+        c["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            c["present"] += 1
+
+    student_overall = []
+    for s in class_students:
+        c = counts_by_student.get(s.id, {"total": 0, "present": 0})
+        total = c["total"]
+        present = c["present"]
+        absent = total - present
+        percentage = round((present / total) * 100, 2) if total else 0.0
+        student_overall.append(
+            {
+                "student_id": s.id,
+                "name": s.name,
+                "roll_number": s.roll_number,
+                "email": s.email,
+                "present": present,
+                "absent": absent,
+                "total": total,
+                "percentage": percentage,
+            }
+        )
+
+    student_overall.sort(
+        key=lambda x: (roll_sort_key(x["roll_number"]), x["name"].lower())
+    )
+
+    # overall summary for selected range
+    total_count = q.count()
+    present_count = q.filter(func.lower(Attendance.status) == "present").count()
+    absent_count = total_count - present_count
+    range_percentage = round((present_count / total_count) * 100, 2) if total_count else 0.0
+    range_summary = {
+        "from_date": from_date.isoformat() if from_date else "",
+        "to_date": to_date.isoformat() if to_date else "",
+        "total": total_count,
+        "present": present_count,
+        "absent": absent_count,
+        "percentage": range_percentage,
+    }
+
     return render_template(
         "view_attendance.html",
         teacher=teacher,
         records=records,
-        selected_date=(selected_date.isoformat() if selected_date else ""),
+        from_date=(from_date.isoformat() if from_date else ""),
+        to_date=(to_date.isoformat() if to_date else ""),
+        range_summary=range_summary,
+        student_overall=student_overall,
         selected_subject=selected_subject,
         branch=branch,
         semester=semester,
+    )
+
+
+@app.route("/teacher/overall", methods=["GET", "POST"])
+def overall_attendance():
+    if session.get("role") != "teacher":
+        abort(403)
+
+    branch = request.args.get("branch")
+    semester = request.args.get("semester")
+    if not branch or not semester:
+        return redirect(url_for("select_class_overall"))
+
+    teacher = User.query.get(session.get("user_id"))
+
+    from_date = None
+    to_date = None
+    if request.method == "POST":
+        fd = (request.form.get("from_date") or "").strip()
+        td = (request.form.get("to_date") or "").strip()
+    else:
+        fd = (request.args.get("from_date") or "").strip()
+        td = (request.args.get("to_date") or "").strip()
+
+    if fd:
+        try:
+            from_date = date.fromisoformat(fd)
+        except Exception:
+            from_date = None
+    if td:
+        try:
+            to_date = date.fromisoformat(td)
+        except Exception:
+            to_date = None
+
+    if from_date and to_date and from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    query = Attendance.query.filter_by(branch=branch, semester=semester)
+    if from_date:
+        query = query.filter(Attendance.date >= from_date)
+    if to_date:
+        query = query.filter(Attendance.date <= to_date)
+
+    records = query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
+
+    subject_counts = {}
+    student_counts = {}
+    for r in records:
+        subject_key = normalize_subject_name(r.subject)
+        subject_stat = subject_counts.setdefault(subject_key, {"total": 0, "present": 0})
+        subject_stat["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            subject_stat["present"] += 1
+
+        student_stat = student_counts.setdefault(r.student_id, {"total": 0, "present": 0})
+        student_stat["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            student_stat["present"] += 1
+
+    subject_overall = []
+    for subject_name, c in subject_counts.items():
+        total = c["total"]
+        present = c["present"]
+        absent = total - present
+        pct = round((present / total) * 100, 2) if total else 0.0
+        subject_overall.append(
+            {
+                "subject": subject_name,
+                "present": present,
+                "absent": absent,
+                "total": total,
+                "percentage": pct,
+            }
+        )
+    subject_overall.sort(key=lambda x: x["subject"].lower())
+
+    class_students = User.query.filter_by(
+        role="student", branch=branch, semester=semester
+    ).all()
+    student_overall = []
+    for s in class_students:
+        c = student_counts.get(s.id, {"total": 0, "present": 0})
+        total = c["total"]
+        present = c["present"]
+        absent = total - present
+        pct = round((present / total) * 100, 2) if total else 0.0
+        student_overall.append(
+            {
+                "name": s.name,
+                "roll_number": s.roll_number,
+                "email": s.email,
+                "present": present,
+                "absent": absent,
+                "total": total,
+                "percentage": pct,
+            }
+        )
+    student_overall.sort(
+        key=lambda x: (roll_sort_key(x["roll_number"]), x["name"].lower())
+    )
+
+    total_count = len(records)
+    present_count = sum(
+        1 for r in records if (r.status or "").strip().lower() == "present"
+    )
+    absent_count = total_count - present_count
+    overall_percentage = round((present_count / total_count) * 100, 2) if total_count else 0.0
+
+    range_summary = {
+        "from_date": from_date.isoformat() if from_date else "",
+        "to_date": to_date.isoformat() if to_date else "",
+        "total": total_count,
+        "present": present_count,
+        "absent": absent_count,
+        "percentage": overall_percentage,
+    }
+
+    return render_template(
+        "teacher_overall_attendance.html",
+        teacher=teacher,
+        branch=branch,
+        semester=semester,
+        from_date=(from_date.isoformat() if from_date else ""),
+        to_date=(to_date.isoformat() if to_date else ""),
+        range_summary=range_summary,
+        subject_overall=subject_overall,
+        student_overall=student_overall,
     )
 
 
@@ -483,52 +962,63 @@ def download_attendance_csv():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
-    date_filter = request.args.get("date")
+    selected_subject = (
+        (request.args.get("subject") or "").strip()
+        or (
+            normalize_subject_name(teacher.department)
+            if teacher and teacher.department
+            else None
+        )
+    )
+    from_date_filter = request.args.get("from_date")
+    to_date_filter = request.args.get("to_date")
 
     if not branch or not semester:
         abort(400)
 
     query = Attendance.query.filter_by(
-        teacher_id=teacher.id, branch=branch, semester=semester, subject=teacher.subject
+        teacher_id=teacher.id,
+        branch=branch,
+        semester=semester,
+        subject=selected_subject,
     )
 
-    if date_filter:
+    if from_date_filter:
         try:
-            selected_date = date.fromisoformat(date_filter)
-            query = query.filter_by(date=selected_date)
+            query = query.filter(Attendance.date >= date.fromisoformat(from_date_filter))
+        except:
+            pass
+    if to_date_filter:
+        try:
+            query = query.filter(Attendance.date <= date.fromisoformat(to_date_filter))
         except:
             pass
 
     records = query.order_by(Attendance.date.desc()).all()
 
+    # per-student overall summary for selected range (include all students in class)
+    class_students = User.query.filter_by(
+        role="student", branch=branch, semester=semester
+    ).all()
+    counts_by_student = {}
+    for r in records:
+        c = counts_by_student.setdefault(r.student_id, {"total": 0, "present": 0})
+        c["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            c["present"] += 1
+
     si = StringIO()
     cw = csv.writer(si)
 
-    cw.writerow(
-        [
-            "Student Name",
-            "Roll Number",
-            "Branch",
-            "Semester",
-            "Subject",
-            "Date",
-            "Status",
-        ]
-    )
-
-    for r in records:
-        student = User.query.get(r.student_id)
-        cw.writerow(
-            [
-                student.name,
-                student.roll_number,
-                r.branch,
-                r.semester,
-                r.subject,
-                r.date,
-                r.status,
-            ]
-        )
+    cw.writerow(["Per Student Overall Attendance"])
+    cw.writerow(["Student Name", "Roll Number", "Present", "Absent", "Total", "Overall %"])
+    for s in sorted(class_students, key=lambda x: (roll_sort_key(x.roll_number), x.name.lower())):
+        c = counts_by_student.get(s.id, {"total": 0, "present": 0})
+        total = c["total"]
+        present = c["present"]
+        absent = total - present
+        pct = round((present / total) * 100, 2) if total else 0.0
+        cw.writerow([s.name, s.roll_number, present, absent, total, f"{pct}%"])
 
     output = si.getvalue()
     si.close()
@@ -537,6 +1027,76 @@ def download_attendance_csv():
         output,
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=attendance.csv"},
+    )
+
+
+@app.route("/teacher/overall/download-csv")
+def download_overall_attendance_csv():
+    if session.get("role") != "teacher":
+        abort(403)
+
+    branch = request.args.get("branch")
+    semester = request.args.get("semester")
+    from_date_filter = (request.args.get("from_date") or "").strip()
+    to_date_filter = (request.args.get("to_date") or "").strip()
+
+    if not branch or not semester:
+        abort(400)
+
+    from_date = None
+    to_date = None
+    if from_date_filter:
+        try:
+            from_date = date.fromisoformat(from_date_filter)
+        except Exception:
+            from_date = None
+    if to_date_filter:
+        try:
+            to_date = date.fromisoformat(to_date_filter)
+        except Exception:
+            to_date = None
+    if from_date and to_date and from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    query = Attendance.query.filter_by(branch=branch, semester=semester)
+    if from_date:
+        query = query.filter(Attendance.date >= from_date)
+    if to_date:
+        query = query.filter(Attendance.date <= to_date)
+
+    records = query.all()
+
+    student_counts = {}
+    for r in records:
+        sc = student_counts.setdefault(r.student_id, {"total": 0, "present": 0})
+        sc["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            sc["present"] += 1
+
+    class_students = User.query.filter_by(
+        role="student", branch=branch, semester=semester
+    ).all()
+
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(["Student-wise Overall Attendance (All Subjects)"])
+    cw.writerow(["Student", "Roll Number", "Email", "Present", "Absent", "Total", "Overall %"])
+
+    for s in sorted(class_students, key=lambda x: (roll_sort_key(x.roll_number), x.name.lower())):
+        c = student_counts.get(s.id, {"total": 0, "present": 0})
+        total = c["total"]
+        present = c["present"]
+        absent = total - present
+        pct = round((present / total) * 100, 2) if total else 0.0
+        cw.writerow([s.name, s.roll_number or "", s.email, present, absent, total, f"{pct}%"])
+
+    output = si.getvalue()
+    si.close()
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=student_overall_attendance.csv"},
     )
 
 
@@ -550,19 +1110,22 @@ def student_dashboard():
     student = User.query.get(student_id)
 
     teachers = User.query.filter_by(role="teacher").all()
-    selected_subject = request.form.get("subject")
+    selected_branch = (request.form.get("branch") or "").strip()
     selected_date = request.form.get("selected_date")
 
     query = Attendance.query.filter_by(student_id=student_id)
 
-    if selected_subject:
-        query = query.filter_by(subject=selected_subject)
+    if selected_branch:
+        query = query.filter(Attendance.branch == selected_branch)
 
     if selected_date:
         selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
         query = query.filter_by(date=selected_date)
 
     records = query.all()
+    for r in records:
+        # Keep DB-backed field immutable in request scope to avoid autoflush updates.
+        r.display_subject = normalize_subject_name(r.subject)
 
     # Filtered stats
     total_days = len(records)
@@ -601,13 +1164,23 @@ def student_dashboard():
     today_record = Attendance.query.filter_by(
         student_id=student_id, date=date.today()
     ).first()
-    subjects = get_all_subjects()
+    branches = sorted(
+        {
+            (r[0] or "").strip()
+            for r in db.session.query(Attendance.branch)
+            .filter(Attendance.student_id == student_id)
+            .distinct()
+            .all()
+            if (r[0] or "").strip()
+        },
+        key=lambda x: x.lower(),
+    )
 
     return render_template(
         "student.html",
         student=student,
         teachers=teachers,
-        selected_subject=selected_subject,
+        selected_branch=selected_branch,
         selected_date=selected_date,
         records=records,
         total_days=total_days,
@@ -615,10 +1188,52 @@ def student_dashboard():
         absent_days=absent_days,
         percentage=percentage,
         today_record=today_record,
-        subjects=subjects,
+        branches=branches,
         overall_percentage=overall_percentage,
         monthly_percentage=monthly_percentage,
     )
+
+
+@app.route("/student/change-password", methods=["GET", "POST"])
+def student_change_password():
+    if session.get("role") != "student":
+        abort(403)
+
+    student = User.query.get(session.get("user_id"))
+    if not student:
+        abort(404)
+
+    if request.method == "POST":
+        current_password = (request.form.get("current_password") or "").strip()
+        new_password = (request.form.get("new_password") or "").strip()
+        confirm_password = (request.form.get("confirm_password") or "").strip()
+
+        if not current_password or not new_password or not confirm_password:
+            flash("Please fill all password fields.")
+            return render_template("student_change_password.html", student=student)
+
+        if not check_password_hash(student.password, current_password):
+            flash("Current password is incorrect.")
+            return render_template("student_change_password.html", student=student)
+
+        if len(new_password) < 6:
+            flash("New password must be at least 6 characters.")
+            return render_template("student_change_password.html", student=student)
+
+        if new_password != confirm_password:
+            flash("New password and confirm password do not match.")
+            return render_template("student_change_password.html", student=student)
+
+        if check_password_hash(student.password, new_password):
+            flash("New password cannot be the same as current password.")
+            return render_template("student_change_password.html", student=student)
+
+        student.password = generate_password_hash(new_password)
+        db.session.commit()
+        flash("Password changed successfully.")
+        return redirect(url_for("student_change_password"))
+
+    return render_template("student_change_password.html", student=student)
 
 
 @app.route("/student/subjects")
@@ -630,39 +1245,39 @@ def student_subjects():
     if not student:
         abort(404)
 
-    # --- subjects where this student has any record ---
-    rows = (
-        db.session.query(Attendance.subject)
-        .filter_by(student_id=student.id)
-        .distinct()
-        .all()
+    # --- branches where this student has any record ---
+    records_for_student = Attendance.query.filter_by(student_id=student.id).all()
+    branches = sorted(
+        {(r.branch or "").strip() for r in records_for_student if (r.branch or "").strip()},
+        key=lambda x: x.lower(),
     )
-    subjects = [r[0] for r in rows]
 
     fallback = False
 
-    # fallback: if student has no records, show all subjects in system
-    if not subjects:
-        rows_all = db.session.query(Attendance.subject).distinct().all()
-        subjects = [r[0] for r in rows_all]
+    # fallback: if student has no records, show all branches in system
+    if not branches:
+        rows_all = db.session.query(Attendance.branch).distinct().all()
+        branches = sorted(
+            {(r[0] or "").strip() for r in rows_all if (r[0] or "").strip()},
+            key=lambda x: x.lower(),
+        )
         fallback = True
 
     subjects_info = []
 
-    for s in subjects:
+    for branch_name in branches:
         # total distinct dates (classes)
         total_sessions = (
             db.session.query(func.count(func.distinct(Attendance.date)))
-            .filter_by(subject=s)
+            .filter(Attendance.branch == branch_name)
             .scalar()
             or 0
         )
 
-        # FIXED: present count ignoring case differences
         present_count = (
             db.session.query(Attendance)
             .filter(
-                Attendance.subject == s,
+                Attendance.branch == branch_name,
                 Attendance.student_id == student.id,
                 func.lower(Attendance.status) == "present",
             )
@@ -672,17 +1287,17 @@ def student_subjects():
         # last class date
         last_rec = (
             db.session.query(Attendance.date)
-            .filter_by(subject=s)
+            .filter(Attendance.branch == branch_name)
             .order_by(Attendance.date.desc())
             .first()
         )
         last_date = last_rec[0].isoformat() if last_rec else None
 
-        # teacher names for this subject
+        # teacher names for this branch
         teacher_rows = (
             db.session.query(User.name)
             .join(Attendance, Attendance.teacher_id == User.id)
-            .filter(Attendance.subject == s)
+            .filter(Attendance.branch == branch_name)
             .distinct()
             .all()
         )
@@ -695,14 +1310,18 @@ def student_subjects():
             else 0
         )
 
-        # check if student has any attendance in this subject
+        # check if student has any attendance in this branch
         enrolled = (
-            Attendance.query.filter_by(subject=s, student_id=student.id).count() > 0
+            Attendance.query.filter(
+                Attendance.branch == branch_name,
+                Attendance.student_id == student.id,
+            ).count()
+            > 0
         )
 
         subjects_info.append(
             {
-                "subject": s,
+                "branch": branch_name,
                 "total_sessions": total_sessions,
                 "present_count": present_count,
                 "present_percent": percent,
@@ -726,23 +1345,31 @@ def student_subject_details(subject):
         abort(403)
     student_id = session.get("user_id")
 
+    normalized_subject = normalize_subject_name(subject)
+    match_values = subject_match_values(normalized_subject)
+
     # total distinct session dates for this subject (class-wide)
     total_sessions = (
         db.session.query(func.count(func.distinct(Attendance.date)))
-        .filter_by(subject=subject)
+        .filter(Attendance.subject.in_(match_values))
         .scalar()
         or 0
     )
 
     # count present for this student
-    present_count = Attendance.query.filter_by(
-        subject=subject, student_id=student_id, status="present"
+    present_count = Attendance.query.filter(
+        Attendance.subject.in_(match_values),
+        Attendance.student_id == student_id,
+        func.lower(Attendance.status) == "present",
     ).count()
 
     # per-session history for this student (date + status)
     hist_rows = (
         db.session.query(Attendance.date, Attendance.status)
-        .filter_by(subject=subject, student_id=student_id)
+        .filter(
+            Attendance.subject.in_(match_values),
+            Attendance.student_id == student_id,
+        )
         .order_by(Attendance.date)
         .all()
     )
@@ -750,7 +1377,7 @@ def student_subject_details(subject):
 
     return jsonify(
         {
-            "subject": subject,
+            "subject": normalized_subject,
             "total_sessions": total_sessions,
             "present_count": present_count,
             "present_percent": (
@@ -768,25 +1395,26 @@ def student_classes():
     if session.get("role") != "student":
         abort(403)
     student = User.query.get(session.get("user_id"))
-    # build per-subject attendance stats for this student
-    rows = (
-        db.session.query(Attendance.subject)
-        .filter_by(student_id=student.id)
-        .distinct()
-        .all()
+    # build per-branch attendance stats for this student
+    records_for_student = Attendance.query.filter_by(student_id=student.id).all()
+    branches = sorted(
+        {(r.branch or "").strip() for r in records_for_student if (r.branch or "").strip()},
+        key=lambda x: x.lower(),
     )
-    subjects = [r[0] for r in rows if r[0]]
     classes_stats = []
-    for subj in subjects:
-        total = Attendance.query.filter_by(student_id=student.id, subject=subj).count()
+    for branch_name in branches:
+        total = Attendance.query.filter(
+            Attendance.student_id == student.id,
+            Attendance.branch == branch_name,
+        ).count()
         present = Attendance.query.filter(
             Attendance.student_id == student.id,
-            Attendance.subject == subj,
+            Attendance.branch == branch_name,
             func.lower(Attendance.status) == "present",
         ).count()
         pct = round((present / total) * 100, 2) if total > 0 else 0
         classes_stats.append(
-            {"subject": subj, "total": total, "present": present, "percentage": pct}
+            {"branch": branch_name, "total": total, "present": present, "percentage": pct}
         )
     return render_template(
         "student_classes.html", student=student, classes_stats=classes_stats
@@ -805,6 +1433,7 @@ def student_attendance():
     )
     for r in records:
         r.teacher_obj = User.query.get(r.teacher_id)
+        r.display_subject = normalize_subject_name(r.subject)
     return render_template("student_attendance.html", student=student, records=records)
 
 
@@ -814,45 +1443,107 @@ def reports():
     if session.get("role") != "admin":
         abort(403)
 
-    # totals (existing)
-    total_students = User.query.filter_by(role="student").count()
-    total_teachers = User.query.filter_by(role="teacher").count()
-    total_attendance = Attendance.query.count()
+    selected_branch = (request.args.get("branch") or "").strip()
+    selected_semester = (request.args.get("semester") or "").strip()
+
+    # options for filter dropdowns
+    branches = {
+        (row[0] or "").strip()
+        for row in db.session.query(User.branch).filter_by(role="student").distinct().all()
+        if row[0]
+    }
+    branches.update(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(Attendance.branch).distinct().all()
+            if row[0]
+        }
+    )
+    semesters = {
+        (row[0] or "").strip()
+        for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+        if row[0]
+    }
+    semesters.update(
+        {
+            (row[0] or "").strip()
+            for row in db.session.query(Attendance.semester).distinct().all()
+            if row[0]
+        }
+    )
+    branch_options = sorted(branches)
+    semester_options = sorted(semesters)
+
+    # filtered attendance base query
+    attendance_query = Attendance.query
+    if selected_branch:
+        attendance_query = attendance_query.filter(Attendance.branch == selected_branch)
+    if selected_semester:
+        attendance_query = attendance_query.filter(Attendance.semester == selected_semester)
+
+    records_all = attendance_query.all()
+    total_attendance = len(records_all)
+
+    # filtered students count
+    students_query = User.query.filter_by(role="student")
+    if selected_branch:
+        students_query = students_query.filter(User.branch == selected_branch)
+    if selected_semester:
+        students_query = students_query.filter(User.semester == selected_semester)
+    students = students_query.all()
+    total_students = len(students)
+
+    # filtered teachers count (teachers with attendance in current filter)
+    teacher_ids = sorted({r.teacher_id for r in records_all})
+    total_teachers = len(teacher_ids)
 
     # Attendance by subject
-    subjects = [row[0] for row in db.session.query(Attendance.subject).distinct().all()]
+    grouped_subjects = {}
+    for r in records_all:
+        key = normalize_subject_name(r.subject)
+        c = grouped_subjects.setdefault(key, {"total": 0, "present": 0})
+        c["total"] += 1
+        if (r.status or "").strip().lower() == "present":
+            c["present"] += 1
+
     attendance_by_subject = []
-    for subj in subjects:
-        total = Attendance.query.filter_by(subject=subj).count()
-        present = Attendance.query.filter(
-            Attendance.subject == subj, func.lower(Attendance.status) == "present"
-        ).count()
+    for subj in sorted(grouped_subjects.keys(), key=lambda x: x.lower()):
+        total = grouped_subjects[subj]["total"]
+        present = grouped_subjects[subj]["present"]
         pct = round((present / total) * 100, 2) if total > 0 else 0
         attendance_by_subject.append(
             {"subject": subj, "total": total, "present": present, "percentage": pct}
         )
 
     # Attendance by teacher
-    teachers = User.query.filter_by(role="teacher").all()
+    teachers = (
+        User.query.filter(User.role == "teacher", User.id.in_(teacher_ids)).all()
+        if teacher_ids
+        else []
+    )
     attendance_by_teacher = []
     for t in teachers:
-        total = Attendance.query.filter_by(teacher_id=t.id).count()
-        present = Attendance.query.filter(
-            Attendance.teacher_id == t.id, func.lower(Attendance.status) == "present"
-        ).count()
+        total = sum(1 for r in records_all if r.teacher_id == t.id)
+        present = sum(
+            1
+            for r in records_all
+            if r.teacher_id == t.id and (r.status or "").strip().lower() == "present"
+        )
         pct = round((present / total) * 100, 2) if total > 0 else 0
         attendance_by_teacher.append(
             {"teacher": t.name, "total": total, "present": present, "percentage": pct}
         )
+    attendance_by_teacher.sort(key=lambda x: x["teacher"].lower())
 
     # Students with lowest attendance (overall) - top 10
-    students = User.query.filter_by(role="student").all()
     student_stats = []
     for s in students:
-        total = Attendance.query.filter_by(student_id=s.id).count()
-        present = Attendance.query.filter(
-            Attendance.student_id == s.id, func.lower(Attendance.status) == "present"
-        ).count()
+        total = sum(1 for r in records_all if r.student_id == s.id)
+        present = sum(
+            1
+            for r in records_all
+            if r.student_id == s.id and (r.status or "").strip().lower() == "present"
+        )
         pct = round((present / total) * 100, 2) if total > 0 else None
         student_stats.append(
             {
@@ -871,7 +1562,7 @@ def reports():
 
     # Recent attendance entries
     recent_records = (
-        Attendance.query.order_by(Attendance.date.desc(), Attendance.id.desc())
+        attendance_query.order_by(Attendance.date.desc(), Attendance.id.desc())
         .limit(12)
         .all()
     )
@@ -879,6 +1570,7 @@ def reports():
     for r in recent_records:
         r.student_obj = User.query.get(r.student_id)
         r.teacher_obj = User.query.get(r.teacher_id)
+        r.display_subject = normalize_subject_name(r.subject)
 
     return render_template(
         "reports.html",
@@ -889,6 +1581,10 @@ def reports():
         attendance_by_teacher=attendance_by_teacher,
         low_attendance=low_attendance,
         recent_records=recent_records,
+        branch_options=branch_options,
+        semester_options=semester_options,
+        selected_branch=selected_branch,
+        selected_semester=selected_semester,
     )
 
 
@@ -906,10 +1602,10 @@ def teacher_classes():
         abort(403)
     teacher = User.query.get(session.get("user_id"))
 
-    # build unique class list (teacher.subject + subjects from attendance)
+    # build unique class list (teacher.department + subjects from attendance)
     classes = []
-    if teacher and teacher.subject:
-        classes.append(teacher.subject)
+    if teacher and teacher.department:
+        classes.append(normalize_subject_name(teacher.department))
     if teacher:
         subjects = [
             row[0]
@@ -920,24 +1616,29 @@ def teacher_classes():
             or []
         ]
         for s in subjects:
-            if s and s not in classes:
-                classes.append(s)
+            normalized = normalize_subject_name(s)
+            if normalized and normalized not in classes:
+                classes.append(normalized)
 
     # build richer info for each class (sessions count, distinct students, last session date)
     classes_info = []
     for s in classes:
+        match_values = subject_match_values(s)
         total_sessions = Attendance.query.filter_by(
-            teacher_id=teacher.id, subject=s
+            teacher_id=teacher.id
+        ).filter(Attendance.subject.in_(match_values)
         ).count()
         last_rec = (
-            Attendance.query.filter_by(teacher_id=teacher.id, subject=s)
+            Attendance.query.filter_by(teacher_id=teacher.id)
+            .filter(Attendance.subject.in_(match_values))
             .order_by(Attendance.date.desc())
             .first()
         )
         last_date = last_rec.date.isoformat() if last_rec else None
         students_count = (
             db.session.query(Attendance.student_id)
-            .filter_by(teacher_id=teacher.id, subject=s)
+            .filter_by(teacher_id=teacher.id)
+            .filter(Attendance.subject.in_(match_values))
             .distinct()
             .count()
         )
@@ -961,12 +1662,7 @@ def get_all_subjects():
     # from attendance table
     rows = db.session.query(Attendance.subject).distinct().all()
     for r in rows:
-        s = (r[0] or "").strip()
-        if s:
-            subs.add(s)
-    # from teacher records
-    for t in User.query.filter_by(role="teacher").all():
-        s = (t.subject or "").strip()
+        s = normalize_subject_name(r[0])
         if s:
             subs.add(s)
     return sorted(subs)
@@ -991,7 +1687,6 @@ if __name__ == "__main__":
                 password=generate_password_hash("teacher123"),
                 role="teacher",
                 department="CS",
-                subject="Web Development",
             )
 
             # Additional teacher/staff teaching accounts
@@ -1022,16 +1717,16 @@ if __name__ == "__main__":
                     "Instrumentation",
                     "Instrumentation Engineering",
                 ),
-                ("Talvinder Singh", "talvinder.m@gmail.com", "CS", "Computer Science"),
-                ("Jagdeep Singh", "jagdeep9906@gmail.com", "CS", "Computer Science"),
+                ("Talvinder Singh", "talvinder.m@gmail.com", "CS", "Computer Engineering"),
+                ("Jagdeep Singh", "jagdeep9906@gmail.com", "CS", "Computer Engineering"),
                 (
                     "Sudhir Dhiman",
                     "sudhir.dhiman85@gmail.com",
                     "CS",
-                    "Computer Science",
+                    "Computer Engineering",
                 ),
-                ("Onkar Singh", "onkar.singh26970@gmail.com", "CS", "Computer Science"),
-                ("Saroop Chand", "saroop2388@gmail.com", "CS", "Computer Science"),
+                ("Onkar Singh", "onkar.singh26970@gmail.com", "CS", "Computer Engineering"),
+                ("Saroop Chand", "saroop2388@gmail.com", "CS", "Computer Engineering"),
                 (
                     "Sachin Sehota",
                     "sachin.sehota@gmail.com",
@@ -1137,348 +1832,348 @@ if __name__ == "__main__":
 
             # Create students data
             students_data = [
-                # Computer Science - 2nd Semester (47 students)
-                ("Aarkit Sharma", "aarkit@gmail.com", "1", "Computer Science", "2"),
-                ("Abansik", "abansik@gmail.com", "2", "Computer Science", "2"),
-                ("Abhay Dogra", "abhay.dogra@gmail.com", "3", "Computer Science", "2"),
-                ("Abhay Verma", "abhay.verma@gmail.com", "4", "Computer Science", "2"),
-                ("Aditya", "aditya@gmail.com", "5", "Computer Science", "2"),
-                ("Akshit Dev", "akshit@gmail.com", "6", "Computer Science", "2"),
-                ("Anmol Saklani", "anmol@gmail.com", "7", "Computer Science", "2"),
-                ("Anshil", "anshil@gmail.com", "8", "Computer Science", "2"),
-                ("Anshuman", "anshuman@gmail.com", "9", "Computer Science", "2"),
-                ("Arun Kumar", "arun.kumar@gmail.com", "10", "Computer Science", "2"),
-                ("Arush Patiyal", "arush@gmail.com", "11", "Computer Science", "2"),
-                ("Aryan", "aryan@gmail.com", "12", "Computer Science", "2"),
-                ("Ayush", "ayush@gmail.com", "13", "Computer Science", "2"),
-                ("Divyansh", "divyansh@gmail.com", "14", "Computer Science", "2"),
-                ("Hemant Koundal", "hemant@gmail.com", "15", "Computer Science", "2"),
-                ("Harshit", "harshit@gmail.com", "16", "Computer Science", "2"),
-                ("Ishan Sagar", "ishan@gmail.com", "17", "Computer Science", "2"),
-                ("Isharit Dogra", "isharit@gmail.com", "18", "Computer Science", "2"),
-                ("Ishita Sugha", "ishita@gmail.com", "19", "Computer Science", "2"),
-                ("Kajal", "kajal@gmail.com", "20", "Computer Science", "2"),
-                ("Krish Bharti", "krish@gmail.com", "21", "Computer Science", "2"),
-                ("Manan Sharma", "manan@gmail.com", "22", "Computer Science", "2"),
-                ("Manisha Dhiman", "manisha@gmail.com", "23", "Computer Science", "2"),
-                ("Mayank Baggae", "mayank@gmail.com", "24", "Computer Science", "2"),
-                ("Muskan", "muskan@gmail.com", "25", "Computer Science", "2"),
-                ("Nitsh Kumar", "nitsh@gmail.com", "26", "Computer Science", "2"),
-                ("Paras", "paras@gmail.com", "27", "Computer Science", "2"),
-                ("Radhika", "radhika@gmail.com", "28", "Computer Science", "2"),
-                ("Raj Sharma", "raj@gmail.com", "29", "Computer Science", "2"),
+                # Computer Engineering - 2nd Semester (47 students)
+                ("Aarkit Sharma", "aarkit@gmail.com", "1", "Computer Engineering", "2"),
+                ("Abansik", "abansik@gmail.com", "2", "Computer Engineering", "2"),
+                ("Abhay Dogra", "abhay.dogra@gmail.com", "3", "Computer Engineering", "2"),
+                ("Abhay Verma", "abhay.verma@gmail.com", "4", "Computer Engineering", "2"),
+                ("Aditya", "aditya@gmail.com", "5", "Computer Engineering", "2"),
+                ("Akshit Dev", "akshit@gmail.com", "6", "Computer Engineering", "2"),
+                ("Anmol Saklani", "anmol@gmail.com", "7", "Computer Engineering", "2"),
+                ("Anshil", "anshil@gmail.com", "8", "Computer Engineering", "2"),
+                ("Anshuman", "anshuman@gmail.com", "9", "Computer Engineering", "2"),
+                ("Arun Kumar", "arun.kumar@gmail.com", "10", "Computer Engineering", "2"),
+                ("Arush Patiyal", "arush@gmail.com", "11", "Computer Engineering", "2"),
+                ("Aryan", "aryan@gmail.com", "12", "Computer Engineering", "2"),
+                ("Ayush", "ayush@gmail.com", "13", "Computer Engineering", "2"),
+                ("Divyansh", "divyansh@gmail.com", "14", "Computer Engineering", "2"),
+                ("Hemant Koundal", "hemant@gmail.com", "15", "Computer Engineering", "2"),
+                ("Harshit", "harshit@gmail.com", "16", "Computer Engineering", "2"),
+                ("Ishan Sagar", "ishan@gmail.com", "17", "Computer Engineering", "2"),
+                ("Isharit Dogra", "isharit@gmail.com", "18", "Computer Engineering", "2"),
+                ("Ishita Sugha", "ishita@gmail.com", "19", "Computer Engineering", "2"),
+                ("Kajal", "kajal@gmail.com", "20", "Computer Engineering", "2"),
+                ("Krish Bharti", "krish@gmail.com", "21", "Computer Engineering", "2"),
+                ("Manan Sharma", "manan@gmail.com", "22", "Computer Engineering", "2"),
+                ("Manisha Dhiman", "manisha@gmail.com", "23", "Computer Engineering", "2"),
+                ("Mayank Baggae", "mayank@gmail.com", "24", "Computer Engineering", "2"),
+                ("Muskan", "muskan@gmail.com", "25", "Computer Engineering", "2"),
+                ("Nitsh Kumar", "nitsh@gmail.com", "26", "Computer Engineering", "2"),
+                ("Paras", "paras@gmail.com", "27", "Computer Engineering", "2"),
+                ("Radhika", "radhika@gmail.com", "28", "Computer Engineering", "2"),
+                ("Raj Sharma", "raj@gmail.com", "29", "Computer Engineering", "2"),
                 (
                     "Ridhima Choudhary",
                     "ridhima@gmail.com",
                     "30",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
                 (
                     "Rudrasish Singh Rana",
                     "rudrasish@gmail.com",
                     "31",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
-                ("Sahil Guleria", "sahil@gmail.com", "32", "Computer Science", "2"),
-                ("Sanjeev Kumar", "sanjeev@gmail.com", "33", "Computer Science", "2"),
-                ("Sanvi Mahajan", "sanvi@gmail.com", "34", "Computer Science", "2"),
-                ("Sheetal", "sheetal@gmail.com", "35", "Computer Science", "2"),
-                ("Shivam", "shivam@gmail.com", "36", "Computer Science", "2"),
+                ("Sahil Guleria", "sahil@gmail.com", "32", "Computer Engineering", "2"),
+                ("Sanjeev Kumar", "sanjeev@gmail.com", "33", "Computer Engineering", "2"),
+                ("Sanvi Mahajan", "sanvi@gmail.com", "34", "Computer Engineering", "2"),
+                ("Sheetal", "sheetal@gmail.com", "35", "Computer Engineering", "2"),
+                ("Shivam", "shivam@gmail.com", "36", "Computer Engineering", "2"),
                 (
                     "Shivam Sharma",
                     "shivam.sharma@gmail.com",
                     "37",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
                 (
                     "Shivam Thakur",
                     "shivam.thakur@gmail.com",
                     "38",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
-                ("Shivend Gautam", "shivend@gmail.com", "39", "Computer Science", "2"),
-                ("Simran Choudhary", "simran@gmail.com", "40", "Computer Science", "2"),
-                ("Sohani Dogra", "sohani@gmail.com", "41", "Computer Science", "2"),
+                ("Shivend Gautam", "shivend@gmail.com", "39", "Computer Engineering", "2"),
+                ("Simran Choudhary", "simran@gmail.com", "40", "Computer Engineering", "2"),
+                ("Sohani Dogra", "sohani@gmail.com", "41", "Computer Engineering", "2"),
                 (
                     "Surya Kumar Koundal",
                     "surya@gmail.com",
                     "42",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
-                ("Swastik Naryal", "swastik@gmail.com", "43", "Computer Science", "2"),
-                ("Tamanna Sharma", "tamanna@gmail.com", "44", "Computer Science", "2"),
+                ("Swastik Naryal", "swastik@gmail.com", "43", "Computer Engineering", "2"),
+                ("Tamanna Sharma", "tamanna@gmail.com", "44", "Computer Engineering", "2"),
                 (
                     "Utkarsh Choudhary",
                     "utkarsh@gmail.com",
                     "45",
-                    "Computer Science",
+                    "Computer Engineering",
                     "2",
                 ),
-                ("Yashita Mehra", "yashita@gmail.com", "46", "Computer Science", "2"),
-                ("Yogesh Raj", "yogesh@gmail.com", "47", "Computer Science", "2"),
-                # Computer Science - 4th Semester (52 students)
-                ("Aarshit Rana", "aarshit@gmail.com", "1", "Computer Science", "4"),
-                ("Aavya Parmar", "aavya@gmail.com", "2", "Computer Science", "4"),
-                ("Aayush Parmar", "aayush@gmail.com", "3", "Computer Science", "4"),
-                ("Abhishek Chalib", "abhishek@gmail.com", "4", "Computer Science", "4"),
+                ("Yashita Mehra", "yashita@gmail.com", "46", "Computer Engineering", "2"),
+                ("Yogesh Raj", "yogesh@gmail.com", "47", "Computer Engineering", "2"),
+                # Computer Engineering - 4th Semester (52 students)
+                ("Aarshit Rana", "aarshit@gmail.com", "1", "Computer Engineering", "4"),
+                ("Aavya Parmar", "aavya@gmail.com", "2", "Computer Engineering", "4"),
+                ("Aayush Parmar", "aayush@gmail.com", "3", "Computer Engineering", "4"),
+                ("Abhishek Chalib", "abhishek@gmail.com", "4", "Computer Engineering", "4"),
                 (
                     "Aditya Sharma",
                     "aditya.sharma@gmail.com",
                     "5",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Akash", "akash@gmail.com", "6", "Computer Science", "4"),
-                ("Akhil Sharma", "akhil@gmail.com", "7", "Computer Science", "4"),
-                ("Amartya", "amartya@gmail.com", "8", "Computer Science", "4"),
-                ("Ankush", "ankush@gmail.com", "9", "Computer Science", "4"),
+                ("Akash", "akash@gmail.com", "6", "Computer Engineering", "4"),
+                ("Akhil Sharma", "akhil@gmail.com", "7", "Computer Engineering", "4"),
+                ("Amartya", "amartya@gmail.com", "8", "Computer Engineering", "4"),
+                ("Ankush", "ankush@gmail.com", "9", "Computer Engineering", "4"),
                 (
                     "Antriksh Choudhary",
                     "antriksh@gmail.com",
                     "10",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Anush Kumar", "anush@gmail.com", "11", "Computer Science", "4"),
-                ("Anushaka", "anushaka@gmail.com", "12", "Computer Science", "4"),
-                ("Anushka Bhatta", "anushka@gmail.com", "13", "Computer Science", "4"),
-                ("Apoorva Dogra", "apoorva@gmail.com", "14", "Computer Science", "4"),
-                ("Arfan", "arfan@gmail.com", "15", "Computer Science", "4"),
+                ("Anush Kumar", "anush@gmail.com", "11", "Computer Engineering", "4"),
+                ("Anushaka", "anushaka@gmail.com", "12", "Computer Engineering", "4"),
+                ("Anushka Bhatta", "anushka@gmail.com", "13", "Computer Engineering", "4"),
+                ("Apoorva Dogra", "apoorva@gmail.com", "14", "Computer Engineering", "4"),
+                ("Arfan", "arfan@gmail.com", "15", "Computer Engineering", "4"),
                 (
                     "Ayush Thakur",
                     "ayush.thakur@gmail.com",
                     "16",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
                 (
                     "Bhuvaneshwar",
                     "bhuvaneshwar@gmail.com",
                     "17",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
                 (
                     "Chaitanya Sharma",
                     "chaitanya@gmail.com",
                     "18",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Hardev Singh", "hardev@gmail.com", "19", "Computer Science", "4"),
-                ("Harish Mondga", "harish@gmail.com", "20", "Computer Science", "4"),
-                ("Janvi", "janvi@gmail.com", "21", "Computer Science", "4"),
-                ("Karun Shiva", "karun@gmail.com", "22", "Computer Science", "4"),
-                ("Kavya", "kavya@gmail.com", "23", "Computer Science", "4"),
-                ("Kriti Rana", "kriti@gmail.com", "24", "Computer Science", "4"),
-                ("Lakshay Sharma", "lakshay@gmail.com", "25", "Computer Science", "4"),
-                ("Manish", "manish@gmail.com", "26", "Computer Science", "4"),
+                ("Hardev Singh", "hardev@gmail.com", "19", "Computer Engineering", "4"),
+                ("Harish Mondga", "harish@gmail.com", "20", "Computer Engineering", "4"),
+                ("Janvi", "janvi@gmail.com", "21", "Computer Engineering", "4"),
+                ("Karun Shiva", "karun@gmail.com", "22", "Computer Engineering", "4"),
+                ("Kavya", "kavya@gmail.com", "23", "Computer Engineering", "4"),
+                ("Kriti Rana", "kriti@gmail.com", "24", "Computer Engineering", "4"),
+                ("Lakshay Sharma", "lakshay@gmail.com", "25", "Computer Engineering", "4"),
+                ("Manish", "manish@gmail.com", "26", "Computer Engineering", "4"),
                 (
                     "Maninder Uldeen",
                     "maninder@gmail.com",
                     "27",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Manvi Rana", "manvi@gmail.com", "28", "Computer Science", "4"),
-                ("Mohit Bharti", "mohit@gmail.com", "29", "Computer Science", "4"),
-                ("Mridul", "mridul@gmail.com", "30", "Computer Science", "4"),
-                ("Muskan", "muskan.cs4@gmail.com", "31", "Computer Science", "4"),
-                ("Nikhil Choudhary", "nikhil@gmail.com", "32", "Computer Science", "4"),
-                ("Nishant Kumar", "nishant@gmail.com", "33", "Computer Science", "4"),
-                ("Palak Bhangale", "palak@gmail.com", "34", "Computer Science", "4"),
-                ("Ridhim Kumar", "ridhim@gmail.com", "35", "Computer Science", "4"),
-                ("Rishabh Kaundal", "rishabh@gmail.com", "36", "Computer Science", "4"),
+                ("Manvi Rana", "manvi@gmail.com", "28", "Computer Engineering", "4"),
+                ("Mohit Bharti", "mohit@gmail.com", "29", "Computer Engineering", "4"),
+                ("Mridul", "mridul@gmail.com", "30", "Computer Engineering", "4"),
+                ("Muskan", "muskan.cs4@gmail.com", "31", "Computer Engineering", "4"),
+                ("Nikhil Choudhary", "nikhil@gmail.com", "32", "Computer Engineering", "4"),
+                ("Nishant Kumar", "nishant@gmail.com", "33", "Computer Engineering", "4"),
+                ("Palak Bhangale", "palak@gmail.com", "34", "Computer Engineering", "4"),
+                ("Ridhim Kumar", "ridhim@gmail.com", "35", "Computer Engineering", "4"),
+                ("Rishabh Kaundal", "rishabh@gmail.com", "36", "Computer Engineering", "4"),
                 (
                     "Shrishti Sharma",
                     "shrishti@gmail.com",
                     "37",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Sneha", "sneha@gmail.com", "38", "Computer Science", "4"),
-                ("Suhaan Mehra", "suhaan@gmail.com", "39", "Computer Science", "4"),
-                ("Tanvi Sharma", "tanvi@gmail.com", "40", "Computer Science", "4"),
-                ("Uday Singh", "uday@gmail.com", "41", "Computer Science", "4"),
-                ("Vipul", "vipul@gmail.com", "42", "Computer Science", "4"),
-                ("Anshika", "anshika@gmail.com", "43", "Computer Science", "4"),
-                ("Jeeya Patiyal", "jeeya@gmail.com", "44", "Computer Science", "4"),
-                ("Kamlesh Kumari", "kamlesh@gmail.com", "45", "Computer Science", "4"),
+                ("Sneha", "sneha@gmail.com", "38", "Computer Engineering", "4"),
+                ("Suhaan Mehra", "suhaan@gmail.com", "39", "Computer Engineering", "4"),
+                ("Tanvi Sharma", "tanvi@gmail.com", "40", "Computer Engineering", "4"),
+                ("Uday Singh", "uday@gmail.com", "41", "Computer Engineering", "4"),
+                ("Vipul", "vipul@gmail.com", "42", "Computer Engineering", "4"),
+                ("Anshika", "anshika@gmail.com", "43", "Computer Engineering", "4"),
+                ("Jeeya Patiyal", "jeeya@gmail.com", "44", "Computer Engineering", "4"),
+                ("Kamlesh Kumari", "kamlesh@gmail.com", "45", "Computer Engineering", "4"),
                 (
                     "Manish Kumar",
                     "manish.kumar@gmail.com",
                     "46",
-                    "Computer Science",
+                    "Computer Engineering",
                     "4",
                 ),
-                ("Diksha", "diksha@gmail.com", "47", "Computer Science", "4"),
-                ("Harshit Rai", "harshit.rai@gmail.com", "48", "Computer Science", "4"),
-                ("Ashish", "ashish@gmail.com", "49", "Computer Science", "4"),
-                ("Nalin Koundal", "nalin@gmail.com", "50", "Computer Science", "4"),
-                ("Ankita Kumari", "ankita@gmail.com", "51", "Computer Science", "4"),
-                ("Dhruv", "dhruv@gmail.com", "52", "Computer Science", "4"),
-                # Computer Science - 6th Semester (50 students)
+                ("Diksha", "diksha@gmail.com", "47", "Computer Engineering", "4"),
+                ("Harshit Rai", "harshit.rai@gmail.com", "48", "Computer Engineering", "4"),
+                ("Ashish", "ashish@gmail.com", "49", "Computer Engineering", "4"),
+                ("Nalin Koundal", "nalin@gmail.com", "50", "Computer Engineering", "4"),
+                ("Ankita Kumari", "ankita@gmail.com", "51", "Computer Engineering", "4"),
+                ("Dhruv", "dhruv@gmail.com", "52", "Computer Engineering", "4"),
+                # Computer Engineering - 6th Semester (50 students)
                 (
                     "Aarush Koundal",
                     "aarush.koundal@gmail.com",
                     "1",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Aditya", "aditya.6@gmail.com", "2", "Computer Science", "6"),
-                ("Aditya", "aditya.6b@gmail.com", "3", "Computer Science", "6"),
+                ("Aditya", "aditya.6@gmail.com", "2", "Computer Engineering", "6"),
+                ("Aditya", "aditya.6b@gmail.com", "3", "Computer Engineering", "6"),
                 (
                     "Aditya Thakur",
                     "aditya.thakur@gmail.com",
                     "4",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Aditya Katoch",
                     "aditya.katoch@gmail.com",
                     "5",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Aditya Sharma",
                     "aditya.sharma.6@gmail.com",
                     "6",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Akasshi Mehra", "akasshi@gmail.com", "7", "Computer Science", "6"),
-                ("Akshara Thakur", "akshara@gmail.com", "8", "Computer Science", "6"),
-                ("Arkshit Sharma", "arkshit@gmail.com", "9", "Computer Science", "6"),
-                ("Anita", "anita@gmail.com", "10", "Computer Science", "6"),
-                ("Areen", "areen@gmail.com", "11", "Computer Science", "6"),
+                ("Akasshi Mehra", "akasshi@gmail.com", "7", "Computer Engineering", "6"),
+                ("Akshara Thakur", "akshara@gmail.com", "8", "Computer Engineering", "6"),
+                ("Arkshit Sharma", "arkshit@gmail.com", "9", "Computer Engineering", "6"),
+                ("Anita", "anita@gmail.com", "10", "Computer Engineering", "6"),
+                ("Areen", "areen@gmail.com", "11", "Computer Engineering", "6"),
                 (
                     "Aryan Dhiman",
                     "aryan.dhiman@gmail.com",
                     "12",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Aryan Jamwal",
                     "aryan.jamwal@gmail.com",
                     "13",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Ayush", "ayush.6@gmail.com", "14", "Computer Science", "6"),
-                ("Banshul Kumar", "banshul@gmail.com", "15", "Computer Science", "6"),
+                ("Ayush", "ayush.6@gmail.com", "14", "Computer Engineering", "6"),
+                ("Banshul Kumar", "banshul@gmail.com", "15", "Computer Engineering", "6"),
                 (
                     "Diksha Chauhan",
                     "diksha.chauhan@gmail.com",
                     "16",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Divyanshi", "divyanshi@gmail.com", "17", "Computer Science", "6"),
-                ("Harsh", "harsh@gmail.com", "18", "Computer Science", "6"),
-                ("Harshi", "harshi@gmail.com", "19", "Computer Science", "6"),
+                ("Divyanshi", "divyanshi@gmail.com", "17", "Computer Engineering", "6"),
+                ("Harsh", "harsh@gmail.com", "18", "Computer Engineering", "6"),
+                ("Harshi", "harshi@gmail.com", "19", "Computer Engineering", "6"),
                 (
                     "Harshit Kapoor",
                     "harshit.kapoor@gmail.com",
                     "20",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Isha Kumari", "isha.kumari@gmail.com", "21", "Computer Science", "6"),
-                ("Ishaan Kumar", "ishaan@gmail.com", "22", "Computer Science", "6"),
+                ("Isha Kumari", "isha.kumari@gmail.com", "21", "Computer Engineering", "6"),
+                ("Ishaan Kumar", "ishaan@gmail.com", "22", "Computer Engineering", "6"),
                 (
                     "Muskan Choudhary",
                     "muskan.choudhary@gmail.com",
                     "23",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Piyush", "piyush@gmail.com", "24", "Computer Science", "6"),
-                ("Priya", "priya@gmail.com", "25", "Computer Science", "6"),
+                ("Piyush", "piyush@gmail.com", "24", "Computer Engineering", "6"),
+                ("Priya", "priya@gmail.com", "25", "Computer Engineering", "6"),
                 (
                     "Pushkar Pathania",
                     "pushkar@gmail.com",
                     "26",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Rasik Jarwal", "rasik@gmail.com", "27", "Computer Science", "6"),
-                ("Riya Dhiman", "riya.dhiman@gmail.com", "28", "Computer Science", "6"),
-                ("Sarshi Koundal", "sarshi@gmail.com", "29", "Computer Science", "6"),
-                ("Saniya", "saniya@gmail.com", "30", "Computer Science", "6"),
-                ("Sejal", "sejal@gmail.com", "31", "Computer Science", "6"),
-                ("Shagun", "shagun@gmail.com", "32", "Computer Science", "6"),
-                ("Shiven Sharma", "shiven@gmail.com", "33", "Computer Science", "6"),
-                ("Shreya", "shreya@gmail.com", "34", "Computer Science", "6"),
+                ("Rasik Jarwal", "rasik@gmail.com", "27", "Computer Engineering", "6"),
+                ("Riya Dhiman", "riya.dhiman@gmail.com", "28", "Computer Engineering", "6"),
+                ("Sarshi Koundal", "sarshi@gmail.com", "29", "Computer Engineering", "6"),
+                ("Saniya", "saniya@gmail.com", "30", "Computer Engineering", "6"),
+                ("Sejal", "sejal@gmail.com", "31", "Computer Engineering", "6"),
+                ("Shagun", "shagun@gmail.com", "32", "Computer Engineering", "6"),
+                ("Shiven Sharma", "shiven@gmail.com", "33", "Computer Engineering", "6"),
+                ("Shreya", "shreya@gmail.com", "34", "Computer Engineering", "6"),
                 (
                     "Simran Bharti",
                     "simran.bharti@gmail.com",
                     "35",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Sneha", "sneha.6@gmail.com", "36", "Computer Science", "6"),
-                ("Tanisha", "tanisha@gmail.com", "37", "Computer Science", "6"),
+                ("Sneha", "sneha.6@gmail.com", "36", "Computer Engineering", "6"),
+                ("Tanisha", "tanisha@gmail.com", "37", "Computer Engineering", "6"),
                 (
                     "Vanshika Naryal",
                     "vanshika@gmail.com",
                     "38",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Vishakha Koundal",
                     "vishakha@gmail.com",
                     "39",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Ankit Koundal",
                     "ankit.koundal@gmail.com",
                     "40",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 (
                     "Ankit Gulerja",
                     "ankit.gulerja@gmail.com",
                     "41",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Akshay Kumar", "akshay@gmail.com", "42", "Computer Science", "6"),
-                ("Abhihay Thakur", "abhihay@gmail.com", "43", "Computer Science", "6"),
+                ("Akshay Kumar", "akshay@gmail.com", "42", "Computer Engineering", "6"),
+                ("Abhihay Thakur", "abhihay@gmail.com", "43", "Computer Engineering", "6"),
                 (
                     "Parshant Sharma",
                     "parshant@gmail.com",
                     "44",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Uday Thakur", "uday.thakur@gmail.com", "45", "Computer Science", "6"),
-                ("Anshika", "anshika.6@gmail.com", "46", "Computer Science", "6"),
-                ("Vansh Rana", "vansh@gmail.com", "47", "Computer Science", "6"),
+                ("Uday Thakur", "uday.thakur@gmail.com", "45", "Computer Engineering", "6"),
+                ("Anshika", "anshika.6@gmail.com", "46", "Computer Engineering", "6"),
+                ("Vansh Rana", "vansh@gmail.com", "47", "Computer Engineering", "6"),
                 (
                     "Disha Choudhary",
                     "disha.choudhary@gmail.com",
                     "48",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
-                ("Mannat Walia", "mannat@gmail.com", "49", "Computer Science", "6"),
+                ("Mannat Walia", "mannat@gmail.com", "49", "Computer Engineering", "6"),
                 (
                     "Krish Singh Athwal",
                     "krish.singh@gmail.com",
                     "50",
-                    "Computer Science",
+                    "Computer Engineering",
                     "6",
                 ),
                 # Electrical Engineering - 2nd Semester (45 students)
@@ -2537,7 +3232,7 @@ if __name__ == "__main__":
                 students.append(student)
 
             teacher_users = []
-            for name, email, department, subject in teachers_data:
+            for name, email, department, _subject in teachers_data:
                 teacher_users.append(
                     User(
                         name=name,
@@ -2545,7 +3240,6 @@ if __name__ == "__main__":
                         password=generate_password_hash("teacher123"),
                         role="teacher",
                         department=department,
-                        subject=subject,
                     )
                 )
 

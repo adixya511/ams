@@ -1,328 +1,143 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Teacher Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+ 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      height: 100%;
-      width: 100%;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-
-    body {
-      display: flex;
-      background: var(--bg-dark);
-      color: var(--text-light);
-    }
-
-    /* SIDEBAR */
-    .sidebar {
-      width: 240px;
-      background: var(--card-bg);
-      height: 100vh;
-      position: fixed;
-      left: 0;
-      top: 0;
-      padding: 24px;
-      overflow-y: auto;
-      border-right: 1px solid var(--border-color);
-    }
-
-    .logo {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      margin-bottom: 28px;
-      text-align: center;
-      background: var(--primary-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .menu-item {
-      margin-bottom: 8px;
-    }
-
-    .menu-link {
-      display: block;
-      padding: 12px 14px;
-      border-radius: 8px;
-      text-decoration: none;
-      color: var(--text-muted);
-      transition: all 0.2s ease;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .menu-link:hover,
-    .menu-link.active {
-      background: rgba(59, 130, 246, 0.1);
-      color: var(--primary);
-    }
-
-    /* MAIN CONTENT */
-    .main {
-      margin-left: 240px;
-      padding: 32px 28px;
-      width: calc(100% - 240px);
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 28px;
-    }
-
-    .dashboard-title {
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text-light);
-    }
-
-    .user-box {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      font-size: 14px;
-    }
-
-    .user-box strong {
-      color: var(--text-light);
-    }
-
-    .user-box span {
-      color: var(--text-muted);
-      font-size: 13px;
-    }
-
-    .avatar {
-      width: 44px;
-      height: 44px;
-      background: var(--primary);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      color: white;
-      font-size: 16px;
-    }
-
-    /* CARDS */
-    .cards-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 28px;
-    }
-
-    .card {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow);
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: var(--primary-gradient);
-    }
-
-    .cards-row .card:nth-child(2)::before {
-      background: var(--success-gradient);
-    }
-
-    .cards-row .card:nth-child(3)::before {
-      background: var(--accent-warm-gradient);
-    }
-
-    .card:hover {
-      border-color: var(--primary);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-4px);
-    }
-
-    .card-title {
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 8px;
-    }
-
-    .card-value {
-      margin-top: 8px;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
-    /* PANELS */
-    .content-row {
-      display: grid;
-      grid-template-columns: 2fr 1.3fr;
-      gap: 16px;
-    }
-
-    .panel {
-      background: var(--card-bg);
-      padding: 24px;
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      box-shadow: var(--shadow);
-    }
-
-    .panel-title {
-      font-size: 18px;
-      margin-bottom: 16px;
-      font-weight: 600;
-      color: var(--text-light);
-    }
-
-    .panel p {
-      margin-bottom: 12px;
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .panel a {
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-
-    .panel a:hover {
-      text-decoration: underline;
-      color: var(--primary-light);
-    }
-
-    @media (max-width: 1200px) {
-      .cards-row {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .content-row {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .sidebar {
-        width: 180px;
-        padding: 16px;
-      }
-
-      .main {
-        margin-left: 180px;
-        width: calc(100% - 180px);
-        padding: 16px;
-      }
-
-      .cards-row {
-        grid-template-columns: 1fr;
-      }
-
-      .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-      }
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { display: flex; background: var(--bg-dark); color: var(--text-light); }
+ 
+    .sidebar { width: 240px; background: var(--card-bg); height: 100vh; position: fixed; left: 0; top: 0; padding: 24px; overflow-y: auto; border-right: 1px solid var(--border-color); }
+    .logo { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 28px; text-align: center; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .menu-item { margin-bottom: 8px; }
+    .menu-link { display: block; padding: 12px 14px; border-radius: 8px; text-decoration: none; color: var(--text-muted); transition: all 0.2s ease; font-size: 14px; font-weight: 500; }
+    .menu-link:hover, .menu-link.active { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+ 
+    .main { margin-left: 240px; padding: 32px 28px; width: calc(100% - 240px); min-height: 100vh; box-sizing: border-box; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+    .dashboard-title { font-size: 28px; font-weight: 700; color: var(--text-light); }
+    .user-box { display: flex; gap: 12px; align-items: center; font-size: 14px; }
+    .user-box strong { color: var(--text-light); }
+    .avatar { width: 44px; height: 44px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 16px; }
+ 
+    .cards-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
+    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow); transition: all 0.2s ease; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--primary-gradient); }
+    .cards-row .card:nth-child(2)::before { background: var(--success-gradient); }
+    .card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); transform: translateY(-4px); }
+    .card-title { color: var(--text-muted); font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+    .card-value { margin-top: 8px; font-size: 20px; font-weight: 700; color: var(--primary); }
+ 
+    .content-row { display: grid; grid-template-columns: 2fr 1.3fr; gap: 16px; }
+    .panel { background: var(--card-bg); padding: 24px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow); }
+    .panel-title { font-size: 18px; margin-bottom: 16px; font-weight: 600; color: var(--text-light); }
+    .panel p { margin-bottom: 12px; color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+    .panel a { color: var(--primary); text-decoration: none; font-weight: 500; transition: all 0.2s ease; }
+    .panel a:hover { text-decoration: underline; color: var(--primary-light); }
+    .quick-form { margin-bottom: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(59, 130, 246, 0.04); }
+    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .quick-form label { font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px; }
+    .quick-form select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-dark); color: var(--text-light); font-family: inherit; }
+    .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .quick-actions button { padding: 10px 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .quick-actions button:nth-child(2) { background: #0ea5e9; }
+    .quick-actions button:nth-child(3) { background: #16a34a; }
+ 
+    @media (max-width: 1200px) { .cards-row { grid-template-columns: repeat(2, 1fr); } .content-row { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .sidebar { width: 180px; padding: 16px; } .main { margin-left: 180px; width: calc(100% - 180px); padding: 16px; } .cards-row { grid-template-columns: 1fr; } .topbar { flex-direction: column; align-items: flex-start; gap: 16px; } }
   </style>
-
 </head>
-
+ 
 <body>
-
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo">GPK KANGRA</div>
-
-    <a href="{{ url_for('teacher_dashboard') }}" class="menu-link active">🏠 Dashboard</a>
-    <a href="{{ url_for('select_class_mark') }}" class="menu-link">📝 Mark Attendance</a>
-    <a href="{{ url_for('select_class_view') }}" class="menu-link">📊 View Attendance</a>
-    <a href="{{ url_for('teacher_classes') }}" class="menu-link">📚 My Classes</a>
-    <a href="{{ url_for('logout') }}" class="menu-link">🚪 Logout</a>
+    <a href="{{ url_for('teacher_dashboard') }}" class="menu-link active">Dashboard</a>
+    <a href="{{ url_for('select_class_mark') }}" class="menu-link">Mark Attendance</a>
+    <a href="{{ url_for('select_class_view') }}" class="menu-link">View Attendance</a>
+    <a href="{{ url_for('teacher_classes') }}" class="menu-link">My Classes</a>
+    <a href="{{ url_for('select_class_overall') }}" class="menu-link">Overall Attendance</a>
+    <a href="{{ url_for('logout') }}" class="menu-link">Logout</a>
   </aside>
-
-  <!-- MAIN CONTENT -->
+ 
   <main class="main">
     <div class="topbar">
       <div class="dashboard-title">Teacher Dashboard</div>
-
       <div class="user-box">
         <div class="avatar">T</div>
         <div>
           <strong>{{ teacher.name }}</strong><br>
-          {{ teacher.email }}<br>
-          <span style="opacity: 0.7;">Subject: {{ teacher.subject }}</span>
+          {{ teacher.email }}
         </div>
       </div>
     </div>
-
-    <!-- CARDS -->
+ 
+    {% set dept_map = {
+      'CS': 'Computer Engineering',
+      'ECE': 'Electronics Engineering',
+      'ME': 'Mechanical Engineering',
+      'CE': 'Civil Engineering',
+      'IE': 'Instrumentation Engineering',
+      'AS&H': 'Applied Science',
+      'Electrical': 'Electrical Engineering',
+      'Instrumentation': 'Instrumentation Engineering'
+    } %}
+ 
     <div class="cards-row">
       <div class="card">
-        <div class="card-title">Your Subject</div>
-        <div class="card-value">{{ teacher.subject }}</div>
-      </div>
-
-      <div class="card">
         <div class="card-title">Department</div>
-        <div class="card-value">{{ teacher.department }}</div>
+        <div class="card-value">
+          {{ dept_map[teacher.department] if teacher.department in dept_map else teacher.department }}
+        </div>
       </div>
-
       <div class="card">
         <div class="card-title">Students in Batch</div>
         <div class="card-value">{{ students|length }}</div>
       </div>
     </div>
-
-    <!-- PANELS -->
+ 
     <div class="content-row">
-
       <div class="panel">
         <div class="panel-title">Quick Actions</div>
-
-        <p><a href="{{ url_for('mark_attendance') }}">➤ Mark Today's Attendance</a></p>
-        <p><a href="{{ url_for('view_attendance') }}">➤ View Attendance Records</a></p>
-        <p><a href="{{ url_for('teacher_classes') }}">➤ View My Classes</a></p>
+        <form class="quick-form" method="POST" action="{{ url_for('teacher_quick_action') }}">
+          <div class="quick-grid">
+            <div>
+              <label for="branch">Branch</label>
+              <select id="branch" name="branch" required>
+                <option value="">Select Branch</option>
+                {% for b in branches %}
+                  <option value="{{ b }}">{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="semester">Semester</label>
+              <select id="semester" name="semester" required>
+                <option value="">Select Semester</option>
+                {% for sem in semesters %}
+                  <option value="{{ sem }}" {% if teacher.semester == sem %}selected{% endif %}>{{ sem }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="quick-actions">
+            <button type="submit" name="action" value="mark">Mark Attendance</button>
+            <button type="submit" name="action" value="view">View Attendance</button>
+            <button type="submit" name="action" value="overall">Overall</button>
+          </div>
+        </form>
+        <p><a href="{{ url_for('select_class_mark') }}">Mark Today's Attendance</a></p>
+        <p><a href="{{ url_for('select_class_view') }}">View Attendance Records</a></p>
+        <p><a href="{{ url_for('teacher_classes') }}">View My Classes</a></p>
+        <p><a href="{{ url_for('select_class_overall') }}">Overall Attendance</a></p>
       </div>
-
       <div class="panel">
         <div class="panel-title">About</div>
-        <p>
-          This dashboard helps you manage attendance, review past logs, and check your assigned
-          class and subject information.
-        </p>
+        <p>This dashboard helps you manage attendance, review past logs, and check your assigned class and department information.</p>
       </div>
-
     </div>
-
   </main>
-
 </body>
 </html>

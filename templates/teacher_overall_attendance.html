@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overall Attendance - Teacher</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-light);
+    padding: 28px;
+  }
+  .wrap { max-width: 1150px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .muted { color: var(--text-muted); font-size: 14px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-top: 20px;
+  }
+  .filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .filters input[type="date"] {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-dark);
+    color: var(--text-light);
+  }
+  .btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--primary);
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+  }
+  thead { background: var(--bg-darker); }
+  .present { color: var(--success); font-weight: 700; }
+  .absent { color: var(--accent); font-weight: 700; }
+  .flat-section { margin-top: 20px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1>Overall Attendance</h1>
+        <div class="muted">
+          Branch: <strong>{{ branch }}</strong> | Semester: <strong>{{ semester }}</strong>
+        </div>
+      </div>
+      <a href="{{ url_for('select_class_overall') }}" class="btn btn-ghost">Back</a>
+    </div>
+
+    <div class="card">
+      <form method="POST" class="filters">
+        <label class="muted">From</label>
+        <input type="date" name="from_date" value="{{ from_date or '' }}">
+        <label class="muted">To</label>
+        <input type="date" name="to_date" value="{{ to_date or '' }}">
+        <button class="btn" type="submit">Apply</button>
+        <a href="{{ url_for('overall_attendance', branch=branch, semester=semester) }}" class="muted" style="text-decoration:none;">Reset</a>
+      </form>
+
+      <table>
+        <thead>
+          <tr><th>From</th><th>To</th><th>Total</th><th>Present</th><th>Absent</th><th>Overall %</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ range_summary.from_date or '-' }}</td>
+            <td>{{ range_summary.to_date or '-' }}</td>
+            <td>{{ range_summary.total }}</td>
+            <td class="present">{{ range_summary.present }}</td>
+            <td class="absent">{{ range_summary.absent }}</td>
+            <td><strong>{{ range_summary.percentage }}%</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flat-section">
+      <h3 style="margin-bottom: 10px;">Subject-wise Overall Attendance</h3>
+      {% if subject_overall %}
+      <table>
+        <thead>
+          <tr><th>Subject</th><th>Present</th><th>Absent</th><th>Total</th><th>Overall %</th></tr>
+        </thead>
+        <tbody>
+          {% for s in subject_overall %}
+          <tr>
+            <td>{{ s.subject }}</td>
+            <td class="present">{{ s.present }}</td>
+            <td class="absent">{{ s.absent }}</td>
+            <td>{{ s.total }}</td>
+            <td><strong>{{ s.percentage }}%</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No attendance records found for the selected range.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom: 10px;">Student-wise Overall Attendance (All Subjects)</h3>
+      <a href="{{ url_for('download_overall_attendance_csv', branch=branch, semester=semester, from_date=from_date, to_date=to_date) }}"
+         style="background:green; color:white; padding:8px 12px; text-decoration:none; border-radius:5px; display:inline-block; margin-bottom:12px;">
+         Download CSV
+      </a>
+      {% if student_overall %}
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Roll / Email</th><th>Present</th><th>Absent</th><th>Total</th><th>Overall %</th></tr>
+        </thead>
+        <tbody>
+          {% for s in student_overall %}
+          <tr>
+            <td>{{ s.name }}</td>
+            <td class="muted">{{ s.roll_number if s.roll_number else s.email }}</td>
+            <td class="present">{{ s.present }}</td>
+            <td class="absent">{{ s.absent }}</td>
+            <td>{{ s.total }}</td>
+            <td><strong>{{ s.percentage }}%</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">No students found for this class.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>My Subjects</title>
+  <title>My Branches</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     * {
@@ -160,12 +160,12 @@
 <body>
 
   <div class="wrap">
-    <h1>My Subjects</h1>
+    <h1>My Branches</h1>
     <div style="font-size:18px;margin-bottom:18px;">Student: {{ student.name }}</div>
 
     {% if fallback %}
       <div style="color:#9fb8ff;margin-bottom:12px">
-        You don't have attendance yet — showing all system subjects.
+        You don't have attendance yet - showing all system branches.
       </div>
     {% endif %}
 
@@ -173,11 +173,11 @@
       <div class="card">
 
         <div class="left">
-          <div class="subject">{{ s.subject }}</div>
+          <div class="subject">{{ s.branch }}</div>
           <div class="meta">
-            Teachers: {{ s.teachers or '—' }} • 
-            Total: {{ s.total_sessions }} • 
-            Present: {{ s.present_count }} • 
+            Teachers: {{ s.teachers or '-' }} | 
+            Total: {{ s.total_sessions }} | 
+            Present: {{ s.present_count }} | 
             <strong>
               {% if s.present_percent >= 75 %}
                 <span style="color: #22c55e;">{{ s.present_percent }}%</span>
@@ -196,7 +196,7 @@
               View stats
           </button>
 
-          <button class="btn-ghost" onclick="downloadCSV('{{ s.subject }}')">Export</button>
+          <button class="btn-ghost" onclick="downloadCSV('{{ s.branch }}')">Export</button>
         </div>
 
       </div>
@@ -206,3 +206,4 @@
 
 </body>
 </html>
+

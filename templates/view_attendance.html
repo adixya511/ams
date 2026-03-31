@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>View Attendance — Teacher</title>
+<title>View Attendance - Teacher</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
   * {
@@ -186,47 +186,72 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div>
         <h1 style="margin:0">View Attendance</h1>
-        <div class="muted">Subject: <strong>{{ selected_subject or '—' }}</strong> | Branch: <strong>{{ branch or '—' }}</strong> | Semester: <strong>{{ semester or '—' }}</strong></div>
+        <div class="muted">Subject: <strong>{{ selected_subject or '-' }}</strong> | Branch: <strong>{{ branch or '-' }}</strong> | Semester: <strong>{{ semester or '-' }}</strong></div>
       </div>
       <div>
-        <a href="{{ url_for('select_class_view') }}" class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7ff">← Back</a>
+        <a href="{{ url_for('select_class_view') }}" class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7ff">Back</a>
       </div>
     </div>
 
     <div class="card">
       <form method="POST" class="filters" novalidate>
-        <label class="muted" style="margin-right:6px">Date</label>
-        <input type="date" name="selected_date" value="{{ selected_date or '' }}">
+        <label class="muted" style="margin-right:6px">From</label>
+        <input type="date" name="from_date" value="{{ from_date or '' }}">
+        <label class="muted" style="margin-right:6px">To</label>
+        <input type="date" name="to_date" value="{{ to_date or '' }}">
         <button class="btn" type="submit">Apply</button>
-        <a href="{{ url_for('view_attendance', branch=branch, semester=semester) }}" class="muted" style="margin-left:auto;text-decoration:none">Reset</a>
+        <a href="{{ url_for('view_attendance', branch=branch, semester=semester, subject=selected_subject) }}" class="muted" style="margin-left:auto;text-decoration:none">Reset</a>
       </form>
 <a href="{{ url_for('download_attendance_csv',
     branch=branch,
     semester=semester,
-    date=selected_date) }}"
+    subject=selected_subject,
+    from_date=from_date,
+    to_date=to_date) }}"
    style="background:green; color:white; padding:8px 12px; text-decoration:none; border-radius:5px;">
    Download CSV
 </a>
-      {% if records %}
+      {% if range_summary %}
         <table>
           <thead>
-            <tr><th>Date</th><th>Student</th><th>Roll / Email</th><th>Status</th></tr>
+            <tr><th>From</th><th>To</th><th>Total</th><th>Present</th><th>Absent</th><th>Overall %</th></tr>
           </thead>
           <tbody>
-            {% for r in records %}
+            <tr>
+              <td>{{ range_summary.from_date or '-' }}</td>
+              <td>{{ range_summary.to_date or '-' }}</td>
+              <td>{{ range_summary.total }}</td>
+              <td class="present">{{ range_summary.present }}</td>
+              <td class="absent">{{ range_summary.absent }}</td>
+              <td><strong>{{ range_summary.percentage }}%</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      {% endif %}
+      {% if student_overall %}
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Roll / Email</th><th>Present</th><th>Absent</th><th>Total</th><th>Overall %</th></tr>
+          </thead>
+          <tbody>
+            {% for s in student_overall %}
               <tr>
-                <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
-                <td>{{ r.student_obj.name if r.student_obj else ('#' ~ r.student_id) }}</td>
-                <td class="muted">{{ r.student_obj.roll_number if r.student_obj and r.student_obj.roll_number else r.student_obj.email if r.student_obj else r.student_id }}</td>
-                <td class="{{ 'present' if (r.status or '').lower()=='present' else 'absent' }}">{{ r.status }}</td>
+                <td>{{ s.name }}</td>
+                <td class="muted">{{ s.roll_number if s.roll_number else s.email }}</td>
+                <td class="present">{{ s.present }}</td>
+                <td class="absent">{{ s.absent }}</td>
+                <td>{{ s.total }}</td>
+                <td><strong>{{ s.percentage }}%</strong></td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
-      {% else %}
+      {% endif %}
+      {% if not student_overall %}
         <p class="muted" style="padding:12px 0">No records found for the selected filters.</p>
       {% endif %}
     </div>
   </div>
 </body>
 </html>
+

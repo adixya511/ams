@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>My Classes</title>
+  <title>My Branches</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     * {
@@ -162,7 +162,7 @@
     <!-- Page Heading -->
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
-        <h1>My Classes</h1>
+        <h1>My Branches</h1>
         <div style="opacity:.8;font-size:17px">Student: <strong>{{ student.name }}</strong></div>
       </div>
       <div>
@@ -176,8 +176,8 @@
         <table>
           <thead>
             <tr>
-              <th>📘 Subject</th>
-              <th>Total Classes</th>
+              <th>📘 Branch</th>
+              <th>Total Records</th>
               <th>Present</th>
               <th>Attendance %</th>
             </tr>
@@ -186,7 +186,7 @@
           <tbody>
             {% for c in classes_stats %}
               <tr>
-                <td>{{ c.subject }}</td>
+                <td>{{ c.branch }}</td>
                 <td>{{ c.total }}</td>
                 <td>{{ c.present }}</td>
 
@@ -208,7 +208,7 @@
         </table>
 
       {% else %}
-        <p style="opacity:.7;font-size:16px">No class records available.</p>
+        <p style="opacity:.7;font-size:16px">No branch records available.</p>
       {% endif %}
     </div>
 
