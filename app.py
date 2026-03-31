@@ -1,6 +1,6 @@
 import csv
 from datetime import date, datetime
-from io import StringIO
+from io import BytesIO, StringIO
 # saving the day
 
 from flask import (
@@ -18,6 +18,11 @@ from flask import (
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
+
+try:
+    from openpyxl import load_workbook
+except Exception:
+    load_workbook = None
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -340,67 +345,165 @@ def upload_users_csv():
     if request.method == "POST":
         f = request.files.get("csv_file")
         if not f or not f.filename:
-            flash("Please choose a CSV file.")
+            flash("Please choose a CSV or Excel file.")
             return redirect(url_for("upload_users_csv"))
+
+        filename = (f.filename or "").strip().lower()
+        rows = []
+        fieldnames = []
 
         try:
-            content = f.read().decode("utf-8-sig", errors="replace")
-            reader = csv.DictReader(StringIO(content))
+            file_bytes = f.read()
+            if filename.endswith(".csv"):
+                content = file_bytes.decode("utf-8-sig", errors="replace")
+                reader = csv.DictReader(StringIO(content))
+                fieldnames = reader.fieldnames or []
+                rows = list(reader)
+            elif filename.endswith(".xlsx"):
+                if load_workbook is None:
+                    flash("Excel support is unavailable. Please install openpyxl or upload CSV.")
+                    return redirect(url_for("upload_users_csv"))
+
+                wb = load_workbook(filename=BytesIO(file_bytes), data_only=True)
+                ws = wb.active
+                excel_rows = list(ws.iter_rows(values_only=True))
+                if not excel_rows:
+                    flash("Uploaded Excel file is empty.")
+                    return redirect(url_for("upload_users_csv"))
+
+                fieldnames = [str(h).strip() if h is not None else "" for h in excel_rows[0]]
+                rows = []
+                for data_row in excel_rows[1:]:
+                    row_dict = {}
+                    for i, header in enumerate(fieldnames):
+                        if not header:
+                            continue
+                        value = data_row[i] if i < len(data_row) else ""
+                        row_dict[header] = "" if value is None else str(value)
+                    if any((str(v).strip() for v in row_dict.values())):
+                        rows.append(row_dict)
+            else:
+                flash("Unsupported file type. Please upload .csv or .xlsx file.")
+                return redirect(url_for("upload_users_csv"))
         except Exception:
-            flash("Unable to read CSV file. Please upload a valid UTF-8 CSV.")
+            flash("Unable to read file. Please upload a valid .csv or .xlsx file.")
             return redirect(url_for("upload_users_csv"))
 
-        required_headers = {"role", "name", "email", "password"}
-        headers = set([h.strip().lower() for h in (reader.fieldnames or []) if h])
-        if not required_headers.issubset(headers):
+        def _norm_header(h):
+            return "".join(ch for ch in (h or "").strip().lower() if ch.isalnum())
+
+        headers = set([h.strip().lower() for h in fieldnames if h])
+        norm_headers = set([_norm_header(h) for h in fieldnames if h])
+        required_headers = {"name", "password", "email"}
+        if not required_headers.issubset(headers) and not required_headers.issubset(norm_headers):
             flash(
-                "CSV must contain headers: role,name,email,password (plus optional fields)."
+                "File must contain headers: name,password,email."
             )
             return redirect(url_for("upload_users_csv"))
 
         created = 0
-        skipped = 0
+        updated = 0
         errors = 0
 
-        for row in reader:
-            role = (row.get("role") or "").strip().lower()
-            name = (row.get("name") or "").strip()
-            email = (row.get("email") or "").strip().lower()
-            password = (row.get("password") or "").strip()
+        for row in rows:
+            # Normalize keys so Excel/CSV header case differences don't break parsing.
+            normalized_row = {(k or "").strip().lower(): (v or "") for k, v in row.items()}
+            normalized_compact_row = {
+                _norm_header(k): (v or "") for k, v in row.items() if k
+            }
 
-            if role not in {"student", "teacher"} or not name or not email or not password:
+            def get_val(*keys):
+                for key in keys:
+                    v = normalized_row.get(key)
+                    if v not in (None, ""):
+                        return str(v).strip()
+                for key in keys:
+                    v = normalized_compact_row.get(_norm_header(key))
+                    if v not in (None, ""):
+                        return str(v).strip()
+                return ""
+
+            role = get_val("role").lower()
+            name = get_val("name")
+            email = get_val("email").lower()
+            password = get_val("password")
+            branch = get_val("branch")
+            semester = get_val("semester")
+            department = get_val("department")
+            roll_number = get_val("roll_number", "roll no", "roll_no", "rollnumber", "roll")
+
+            if not name or not email or not password:
                 errors += 1
                 continue
 
-            if User.query.filter(func.lower(User.email) == email).first():
-                skipped += 1
-                continue
+            # Auto-detect role when it is not provided.
+            if role not in {"student", "teacher"}:
+                has_student_fields = bool(branch or semester or roll_number)
+                has_teacher_fields = bool(department)
+                if has_teacher_fields and not has_student_fields:
+                    role = "teacher"
+                elif has_student_fields:
+                    role = "student"
+                else:
+                    errors += 1
+                    continue
 
             if role == "student":
-                u = User(
-                    role="student",
-                    name=name,
-                    email=email,
-                    password=generate_password_hash(password),
-                    roll_number=(row.get("roll_number") or "").strip() or None,
-                    branch=(row.get("branch") or "").strip() or None,
-                    semester=(row.get("semester") or "").strip() or None,
-                )
+                if not branch or not semester:
+                    errors += 1
+                    continue
             else:
-                u = User(
-                    role="teacher",
-                    name=name,
-                    email=email,
-                    password=generate_password_hash(password),
-                    department=(row.get("department") or "").strip() or None,
-                    semester=(row.get("semester") or "").strip() or None,
-                )
+                if not department:
+                    errors += 1
+                    continue
 
-            db.session.add(u)
-            created += 1
+            existing_user = User.query.filter(func.lower(User.email) == email).first()
+
+            if existing_user:
+                existing_user.role = role
+                existing_user.name = name
+                existing_user.password = generate_password_hash(password)
+                existing_user.semester = semester or None
+
+                if role == "student":
+                    existing_user.roll_number = (
+                        roll_number or None
+                    )
+                    existing_user.branch = branch or None
+                    existing_user.department = None
+                else:
+                    existing_user.department = department or None
+                    existing_user.roll_number = None
+                    existing_user.branch = None
+                updated += 1
+            else:
+                if role == "student":
+                    u = User(
+                        role="student",
+                        name=name,
+                        email=email,
+                        password=generate_password_hash(password),
+                        roll_number=roll_number or None,
+                        branch=branch or None,
+                        semester=semester or None,
+                    )
+                else:
+                    u = User(
+                        role="teacher",
+                        name=name,
+                        email=email,
+                        password=generate_password_hash(password),
+                        department=department or None,
+                        semester=semester or None,
+                    )
+
+                db.session.add(u)
+                created += 1
 
         db.session.commit()
-        flash(f"Upload complete. Created: {created}, Skipped(existing): {skipped}, Invalid rows: {errors}")
+        flash(
+            f"Upload complete. Created: {created}, Updated(existing): {updated}, Invalid rows: {errors}"
+        )
         return redirect(url_for("admin_dashboard"))
 
     return render_template("upload_users_csv.html")

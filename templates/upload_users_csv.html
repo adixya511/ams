@@ -83,7 +83,7 @@
   <div class="wrap">
     <div class="card">
       <h1>Upload Users CSV</h1>
-      <div class="muted">Bulk create students and teachers in one shot.</div>
+      <div class="muted">Bulk create users from CSV or Excel (.xlsx).</div>
 
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -94,20 +94,23 @@
       {% endwith %}
 
       <form method="POST" enctype="multipart/form-data">
-        <label for="csv_file">CSV File</label>
-        <input id="csv_file" name="csv_file" type="file" accept=".csv" required>
-        <button class="btn" type="submit">Upload CSV</button>
+        <label for="csv_file">CSV or Excel File</label>
+        <input id="csv_file" name="csv_file" type="file" accept=".csv,.xlsx" required>
+        <button class="btn" type="submit">Upload File</button>
       </form>
     </div>
 
     <div class="card">
       <h3 style="margin-top:0">CSV Format</h3>
-      <div class="muted">Required columns: role,name,email,password</div>
-      <div class="muted">Optional columns for students: roll_number,branch,semester</div>
-      <div class="muted">Optional columns for teachers: department,semester</div>
-      <pre>role,name,email,password,roll_number,branch,semester,department
-student,Aman,aman@example.com,pass123,101,Computer Science,6,
-teacher,Naresh,naresh@example.com,pass123,,,6,Computer Engineering</pre>
+      <div class="muted">Base required columns: name,password,email</div>
+      <div class="muted">Student file: name,email,password,branch,semester (roll_number optional)</div>
+      <div class="muted">Teacher file: name,email,password,department</div>
+      <div class="muted">role column is optional. If omitted, role is auto-detected from row fields.</div>
+      <pre>name,email,password,branch,semester,roll_number
+Aman,aman@example.com,pass123,Computer Science,6,101
+
+name,email,password,department
+Naresh,naresh@example.com,pass123,Computer Engineering</pre>
       <a class="link" href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
     </div>
   </div>

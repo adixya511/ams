@@ -1,0 +1,4 @@
+name,branch,semester,password,email,role,roll_number,department
+Rahul,CSE,5,123456,rahul1@test.com,student,101,
+Priya,CSE,5,123456,priya1@test.com,student,102,
+Sharma Sir,CSE,5,123456,sharma1@test.com,teacher,,CSE
