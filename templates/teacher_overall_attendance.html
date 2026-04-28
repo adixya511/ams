@@ -72,7 +72,8 @@
       <div>
         <h1>Overall Attendance</h1>
         <div class="muted">
-          Branch: <strong>{{ branch }}</strong> | Semester: <strong>{{ semester }}</strong>
+          Branch: <strong>{{ branch }}</strong> | Semester: <strong>{{ semester }}</strong> |
+          Subject: <strong>{{ selected_subject or 'All Subjects' }}</strong>
         </div>
       </div>
       <a href="{{ url_for('select_class_overall') }}" class="btn btn-ghost">Back</a>
@@ -80,12 +81,13 @@
 
     <div class="card">
       <form method="POST" class="filters">
+        <input type="hidden" name="subject" value="{{ selected_subject or '' }}">
         <label class="muted">From</label>
         <input type="date" name="from_date" value="{{ from_date or '' }}">
         <label class="muted">To</label>
         <input type="date" name="to_date" value="{{ to_date or '' }}">
         <button class="btn" type="submit">Apply</button>
-        <a href="{{ url_for('overall_attendance', branch=branch, semester=semester) }}" class="muted" style="text-decoration:none;">Reset</a>
+        <a href="{{ url_for('overall_attendance', branch=branch, semester=semester, subject=selected_subject) }}" class="muted" style="text-decoration:none;">Reset</a>
       </form>
 
       <table>
@@ -131,7 +133,7 @@
 
     <div class="card">
       <h3 style="margin-bottom: 10px;">Student-wise Overall Attendance (All Subjects)</h3>
-      <a href="{{ url_for('download_overall_attendance_csv', branch=branch, semester=semester, from_date=from_date, to_date=to_date) }}"
+      <a href="{{ url_for('download_overall_attendance_csv', branch=branch, semester=semester, subject=selected_subject, from_date=from_date, to_date=to_date) }}"
          style="background:green; color:white; padding:8px 12px; text-decoration:none; border-radius:5px; display:inline-block; margin-bottom:12px;">
          Download CSV
       </a>

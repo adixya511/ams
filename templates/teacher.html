@@ -38,7 +38,7 @@
     .panel a { color: var(--primary); text-decoration: none; font-weight: 500; transition: all 0.2s ease; }
     .panel a:hover { text-decoration: underline; color: var(--primary-light); }
     .quick-form { margin-bottom: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(59, 130, 246, 0.04); }
-    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
     .quick-form label { font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px; }
     .quick-form select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-dark); color: var(--text-light); font-family: inherit; }
     .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -74,22 +74,22 @@
       </div>
     </div>
  
-    {% set dept_map = {
+    {% set branch_map = {
+      'CE': 'Computer Engineering',
       'CS': 'Computer Engineering',
       'ECE': 'Electronics Engineering',
       'ME': 'Mechanical Engineering',
-      'CE': 'Civil Engineering',
       'IE': 'Instrumentation Engineering',
       'AS&H': 'Applied Science',
       'Electrical': 'Electrical Engineering',
       'Instrumentation': 'Instrumentation Engineering'
     } %}
- 
+
     <div class="cards-row">
       <div class="card">
-        <div class="card-title">Department</div>
+        <div class="card-title">Branch</div>
         <div class="card-value">
-          {{ dept_map[teacher.department] if teacher.department in dept_map else teacher.department }}
+          {{ branch_map.get((teacher.department or '').strip(), teacher.department or 'Not Assigned') }}
         </div>
       </div>
       <div class="card">
@@ -121,6 +121,18 @@
                 {% endfor %}
               </select>
             </div>
+            <div>
+              <label for="subject">Subject</label>
+              <select id="subject" name="subject" required>
+                <option value="">Select Subject</option>
+                {% for sub in subjects %}
+                  <option value="{{ sub }}" {% if teacher.department == sub %}selected{% endif %}>{{ sub }}</option>
+                {% endfor %}
+                {% if not subjects and not teacher.department %}
+                  <option value="" disabled>No subject assigned</option>
+                {% endif %}
+              </select>
+            </div>
           </div>
           <div class="quick-actions">
             <button type="submit" name="action" value="mark">Mark Attendance</button>
@@ -135,7 +147,7 @@
       </div>
       <div class="panel">
         <div class="panel-title">About</div>
-        <p>This dashboard helps you manage attendance, review past logs, and check your assigned class and department information.</p>
+        <p>This dashboard helps you manage attendance, review past logs, and check your assigned class and branch information.</p>
       </div>
     </div>
   </main>

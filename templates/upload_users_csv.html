@@ -7,75 +7,101 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg-dark);
-      color: var(--text-light);
+      font-family: 'Poppins', 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.18), transparent 35%),
+        radial-gradient(circle at 90% 20%, rgba(34, 197, 94, 0.14), transparent 35%),
+        linear-gradient(135deg, #f3f7ff 0%, #eefcf7 100%);
+      color: #12233d;
       margin: 0;
-      padding: 24px;
+      padding: 28px;
     }
     .wrap {
       max-width: 860px;
       margin: 0 auto;
     }
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 22px;
-      box-shadow: var(--shadow);
-      margin-bottom: 18px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+      margin-bottom: 20px;
+      backdrop-filter: blur(2px);
     }
     h1 {
       margin: 0 0 8px 0;
-      font-size: 28px;
+      font-size: 34px;
+      letter-spacing: -0.4px;
+      color: #0f294f;
     }
     .muted {
-      color: var(--text-muted);
+      color: #4b607f;
       font-size: 14px;
+      line-height: 1.45;
     }
     label {
       display: block;
-      margin: 12px 0 8px 0;
-      font-weight: 600;
+      margin: 14px 0 10px 0;
+      font-weight: 700;
+      color: #193460;
     }
     input[type="file"] {
       width: 100%;
-      padding: 10px;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      background: var(--bg-dark);
-      color: var(--text-light);
+      padding: 14px;
+      border: 1px dashed #8bb5ff;
+      border-radius: 12px;
+      background: #f6f9ff;
+      color: #1e3a63;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    input[type="file"]:hover,
+    input[type="file"]:focus {
+      border-color: #2563eb;
+      background: #eef4ff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+      outline: none;
     }
     .btn {
-      margin-top: 14px;
-      padding: 10px 16px;
+      margin-top: 16px;
+      padding: 11px 18px;
       border: none;
-      border-radius: 8px;
-      background: var(--primary);
+      border-radius: 10px;
+      background: linear-gradient(90deg, #2563eb, #0ea5e9);
       color: #fff;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
-    .btn:hover { background: var(--primary-light); }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 22px rgba(14, 165, 233, 0.28);
+      filter: brightness(1.05);
+    }
     pre {
-      background: var(--bg-darker);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
+      background: linear-gradient(180deg, #f6f9ff 0%, #edf4ff 100%);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: 12px;
       padding: 12px;
       overflow-x: auto;
       font-size: 13px;
+      color: #14325d;
     }
     .link {
-      color: var(--primary);
+      color: #1d4ed8;
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 700;
     }
+    .link:hover { text-decoration: underline; }
     .msg {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: rgba(59,130,246,0.08);
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(14, 165, 233, 0.35);
+      background: linear-gradient(90deg, rgba(14,165,233,0.08), rgba(37,99,235,0.08));
+      color: #0f3d72;
+      font-weight: 500;
     }
   </style>
 </head>

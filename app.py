@@ -94,6 +94,65 @@ def subject_match_values(subject_value):
     return [s]
 
 
+TIMETABLE_SUBJECT_ASSIGNMENTS = {
+    ("Computer Engineering", "6"): {
+        "Talvinder Singh": ["E&SU", "IC"],
+        "Avinash Sharma": ["SL", "DCS"],
+        "Surbhi Sharma": ["OE-II"],
+        "Tamanna": ["OE-III"],
+        "Yashwant Singh": ["SCA"],
+    }
+}
+
+TEACHER_SUBJECT_OPTIONS = [
+    "E&SU",
+    "Scripting Language",
+    "OE 3(multimedia and application)",
+    "India constitutuon",
+    "OE 2(Data wareahouse and data mining)",
+]
+
+
+def canonicalize_teacher_subject(subject_value):
+    subject_raw = (subject_value or "").strip()
+    if not subject_raw:
+        return ""
+    for subject_name in TEACHER_SUBJECT_OPTIONS:
+        if subject_raw.lower() == subject_name.lower():
+            return subject_name
+    return ""
+
+
+def get_assigned_subjects_for_teacher(teacher, branch=None, semester=None):
+    subjects = set()
+    if not teacher:
+        return []
+
+    # Timetable mapping for class-wise fixed subject assignment.
+    if branch and semester:
+        class_mapping = TIMETABLE_SUBJECT_ASSIGNMENTS.get(
+            ((branch or "").strip(), (semester or "").strip()),
+            {},
+        )
+        for subject_name in class_mapping.get((teacher.name or "").strip(), []):
+            subjects.add(normalize_subject_name(subject_name))
+
+    if teacher.department:
+        subjects.add(normalize_subject_name(teacher.department))
+
+    query = db.session.query(Attendance.subject).filter(Attendance.teacher_id == teacher.id)
+    if branch:
+        query = query.filter(Attendance.branch == branch)
+    if semester:
+        query = query.filter(Attendance.semester == semester)
+    for row in query.distinct().all():
+        s = normalize_subject_name(row[0])
+        if s:
+            subjects.add(s)
+
+    return sorted(subjects, key=lambda x: x.lower())
+
+
 # ---------------- ROOT ----------------
 @app.route("/")
 def root():
@@ -275,12 +334,30 @@ def add_teacher():
         abort(403)
 
     if request.method == "POST":
+        subject = (request.form.get("subject") or "").strip()
+        if subject not in TEACHER_SUBJECT_OPTIONS:
+            flash("Please select a valid subject for the teacher.")
+            semesters = sorted(
+                {
+                    (row[0] or "").strip()
+                    for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+                    if (row[0] or "").strip()
+                }
+            )
+            if not semesters:
+                semesters = [str(i) for i in range(1, 9)]
+            return render_template(
+                "add_teacher.html",
+                semesters=semesters,
+                subject_options=TEACHER_SUBJECT_OPTIONS,
+                selected_subject=subject,
+            )
         t = User(
             name=request.form["name"],
             email=request.form["email"].lower(),
             password=generate_password_hash(request.form["password"]),
             role="teacher",
-            department=request.form["department"],
+            department=subject,
             semester=(request.form.get("semester") or "").strip() or None,
         )
         db.session.add(t)
@@ -296,7 +373,11 @@ def add_teacher():
     )
     if not semesters:
         semesters = [str(i) for i in range(1, 9)]
-    return render_template("add_teacher.html", semesters=semesters)
+    return render_template(
+        "add_teacher.html",
+        semesters=semesters,
+        subject_options=TEACHER_SUBJECT_OPTIONS,
+    )
 
 
 @app.route("/admin/teacher/edit/<int:id>", methods=["GET", "POST"])
@@ -305,12 +386,30 @@ def edit_teacher(id):
         abort(403)
     teacher = User.query.get_or_404(id)
     if request.method == "POST":
+        subject = (request.form.get("subject") or "").strip()
+        if subject not in TEACHER_SUBJECT_OPTIONS:
+            flash("Please select a valid subject for the teacher.")
+            semesters = sorted(
+                {
+                    (row[0] or "").strip()
+                    for row in db.session.query(User.semester).filter_by(role="student").distinct().all()
+                    if (row[0] or "").strip()
+                }
+            )
+            if not semesters:
+                semesters = [str(i) for i in range(1, 9)]
+            return render_template(
+                "edit_teacher.html",
+                teacher=teacher,
+                semesters=semesters,
+                subject_options=TEACHER_SUBJECT_OPTIONS,
+            )
         teacher.name = request.form.get("name", teacher.name)
         teacher.email = request.form.get("email", teacher.email).lower()
         pwd = request.form.get("password", "").strip()
         if pwd:
             teacher.password = generate_password_hash(pwd)
-        teacher.department = request.form.get("department", teacher.department)
+        teacher.department = subject
         teacher.semester = (request.form.get("semester") or "").strip() or None
         db.session.commit()
         flash("Teacher updated.")
@@ -324,7 +423,12 @@ def edit_teacher(id):
     )
     if not semesters:
         semesters = [str(i) for i in range(1, 9)]
-    return render_template("edit_teacher.html", teacher=teacher, semesters=semesters)
+    return render_template(
+        "edit_teacher.html",
+        teacher=teacher,
+        semesters=semesters,
+        subject_options=TEACHER_SUBJECT_OPTIONS,
+    )
 
 
 @app.route("/admin/teacher/delete/<int:id>")
@@ -530,12 +634,14 @@ def teacher_dashboard():
             if (row[0] or "").strip()
         }
     )
+    subjects = list(TEACHER_SUBJECT_OPTIONS)
     return render_template(
         "teacher.html",
         teacher=teacher,
         students=students,
         branches=branches,
         semesters=semesters,
+        subjects=subjects,
     )
 
 
@@ -546,18 +652,26 @@ def teacher_quick_action():
 
     branch = (request.form.get("branch") or "").strip()
     semester = (request.form.get("semester") or "").strip()
+    subject = canonicalize_teacher_subject(request.form.get("subject"))
     action = (request.form.get("action") or "").strip()
 
-    if not branch or not semester:
-        flash("Please select both branch and semester.")
+    if not branch or not semester or not subject:
+        flash("Please select branch, semester, and subject.")
         return redirect(url_for("teacher_dashboard"))
 
     if action == "mark":
-        return redirect(url_for("mark_attendance", branch=branch, semester=semester))
+        session["locked_mark_subject"] = subject
+        return redirect(
+            url_for("mark_attendance", branch=branch, semester=semester, subject=subject)
+        )
     if action == "view":
-        return redirect(url_for("view_attendance", branch=branch, semester=semester))
+        return redirect(
+            url_for("view_attendance", branch=branch, semester=semester, subject=subject)
+        )
     if action == "overall":
-        return redirect(url_for("overall_attendance", branch=branch, semester=semester))
+        return redirect(
+            url_for("overall_attendance", branch=branch, semester=semester, subject=subject)
+        )
 
     flash("Invalid action selected.")
     return redirect(url_for("teacher_dashboard"))
@@ -572,7 +686,11 @@ def select_class_mark():
     if request.method == "POST":
         branch = request.form.get("branch")
         semester = request.form.get("semester")
-        subject = (request.form.get("subject") or "").strip()
+        subject = canonicalize_teacher_subject(request.form.get("subject"))
+        if not subject:
+            flash("Please select a valid subject.")
+            return redirect(url_for("select_class_mark"))
+        session["locked_mark_subject"] = subject
         return redirect(
             url_for("mark_attendance", branch=branch, semester=semester, subject=subject)
         )
@@ -582,23 +700,10 @@ def select_class_mark():
     semesters = (
         db.session.query(User.semester).filter_by(role="student").distinct().all()
     )
-    teacher = User.query.get(session["user_id"])
-    subjects = set()
-    if teacher and teacher.department:
-        subjects.add(normalize_subject_name(teacher.department))
-    for row in (
-        db.session.query(Attendance.subject)
-        .filter(Attendance.teacher_id == session["user_id"])
-        .distinct()
-        .all()
-    ):
-        s = normalize_subject_name(row[0])
-        if s:
-            subjects.add(s)
+    subjects = list(TEACHER_SUBJECT_OPTIONS)
 
     branches = sorted([b[0] for b in branches if b[0]])
     semesters = sorted([s[0] for s in semesters if s[0]])
-    subjects = sorted(subjects, key=lambda x: x.lower())
 
     return render_template(
         "select_class.html",
@@ -619,7 +724,10 @@ def select_class_view():
     if request.method == "POST":
         branch = request.form.get("branch")
         semester = request.form.get("semester")
-        subject = (request.form.get("subject") or "").strip()
+        subject = canonicalize_teacher_subject(request.form.get("subject"))
+        if not subject:
+            flash("Please select a valid subject.")
+            return redirect(url_for("select_class_view"))
         return redirect(
             url_for("view_attendance", branch=branch, semester=semester, subject=subject)
         )
@@ -629,23 +737,10 @@ def select_class_view():
     semesters = (
         db.session.query(User.semester).filter_by(role="student").distinct().all()
     )
-    teacher = User.query.get(session["user_id"])
-    subjects = set()
-    if teacher and teacher.department:
-        subjects.add(normalize_subject_name(teacher.department))
-    for row in (
-        db.session.query(Attendance.subject)
-        .filter(Attendance.teacher_id == session["user_id"])
-        .distinct()
-        .all()
-    ):
-        s = normalize_subject_name(row[0])
-        if s:
-            subjects.add(s)
+    subjects = list(TEACHER_SUBJECT_OPTIONS)
 
     branches = sorted([b[0] for b in branches if b[0]])
     semesters = sorted([s[0] for s in semesters if s[0]])
-    subjects = sorted(subjects, key=lambda x: x.lower())
 
     return render_template(
         "select_class.html",
@@ -665,28 +760,26 @@ def select_class_overall():
     if request.method == "POST":
         branch = request.form.get("branch")
         semester = request.form.get("semester")
-        return redirect(url_for("overall_attendance", branch=branch, semester=semester))
+        subject = canonicalize_teacher_subject(request.form.get("subject"))
+        if not subject:
+            flash("Please select a valid subject.")
+            return redirect(url_for("select_class_overall"))
+        return redirect(
+            url_for(
+                "overall_attendance",
+                branch=branch,
+                semester=semester,
+                subject=subject,
+            )
+        )
 
     branches = db.session.query(User.branch).filter_by(role="student").distinct().all()
     semesters = (
         db.session.query(User.semester).filter_by(role="student").distinct().all()
     )
-    teacher = User.query.get(session["user_id"])
-    subjects = set()
-    if teacher and teacher.department:
-        subjects.add(normalize_subject_name(teacher.department))
-    for row in (
-        db.session.query(Attendance.subject)
-        .filter(Attendance.teacher_id == session["user_id"])
-        .distinct()
-        .all()
-    ):
-        s = normalize_subject_name(row[0])
-        if s:
-            subjects.add(s)
+    subjects = list(TEACHER_SUBJECT_OPTIONS)
     branches = sorted([b[0] for b in branches if b[0]])
     semesters = sorted([s[0] for s in semesters if s[0]])
-    subjects = sorted(subjects, key=lambda x: x.lower())
 
     return render_template(
         "select_class.html",
@@ -709,14 +802,16 @@ def mark_attendance():
         return redirect(url_for("select_class_mark"))
 
     teacher = User.query.get(session["user_id"])
-    selected_subject = (
-        (request.args.get("subject") or "").strip()
-        or (
-            normalize_subject_name(teacher.department)
-            if teacher and teacher.department
-            else None
-        )
-    )
+    requested_subject = canonicalize_teacher_subject(request.args.get("subject"))
+    locked_subject = canonicalize_teacher_subject(session.get("locked_mark_subject"))
+    if locked_subject and requested_subject and locked_subject != requested_subject:
+        flash("Subject changed in URL. Please select subject again.")
+        return redirect(url_for("select_class_mark"))
+    selected_subject = requested_subject or locked_subject
+    if not selected_subject:
+        flash("Please select a subject first.")
+        return redirect(url_for("select_class_mark"))
+    session["locked_mark_subject"] = selected_subject
     students = User.query.filter_by(
         role="student", branch=branch, semester=semester
     ).all()
@@ -805,13 +900,9 @@ def view_attendance():
     teacher = User.query.get(session.get("user_id"))
 
     # teacher's subject is fixed — do not allow choosing other subjects
-    selected_subject = (
-        (request.args.get("subject") or "").strip()
-        or (
-            normalize_subject_name(teacher.department)
-            if teacher and teacher.department
-            else None
-        )
+    assigned_subjects = get_assigned_subjects_for_teacher(teacher, branch, semester)
+    selected_subject = (request.args.get("subject") or "").strip() or (
+        assigned_subjects[0] if assigned_subjects else None
     )
 
     # read date range filters
@@ -935,6 +1026,9 @@ def overall_attendance():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
+    selected_subject = (
+        (request.args.get("subject") or request.form.get("subject") or "").strip()
+    )
     if not branch or not semester:
         return redirect(url_for("select_class_overall"))
 
@@ -964,6 +1058,8 @@ def overall_attendance():
         from_date, to_date = to_date, from_date
 
     query = Attendance.query.filter_by(branch=branch, semester=semester)
+    if selected_subject:
+        query = query.filter(Attendance.subject.in_(subject_match_values(selected_subject)))
     if from_date:
         query = query.filter(Attendance.date >= from_date)
     if to_date:
@@ -1048,6 +1144,7 @@ def overall_attendance():
         teacher=teacher,
         branch=branch,
         semester=semester,
+        selected_subject=selected_subject,
         from_date=(from_date.isoformat() if from_date else ""),
         to_date=(to_date.isoformat() if to_date else ""),
         range_summary=range_summary,
@@ -1065,13 +1162,9 @@ def download_attendance_csv():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
-    selected_subject = (
-        (request.args.get("subject") or "").strip()
-        or (
-            normalize_subject_name(teacher.department)
-            if teacher and teacher.department
-            else None
-        )
+    assigned_subjects = get_assigned_subjects_for_teacher(teacher, branch, semester)
+    selected_subject = (request.args.get("subject") or "").strip() or (
+        assigned_subjects[0] if assigned_subjects else None
     )
     from_date_filter = request.args.get("from_date")
     to_date_filter = request.args.get("to_date")
@@ -1140,6 +1233,7 @@ def download_overall_attendance_csv():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
+    selected_subject = (request.args.get("subject") or "").strip()
     from_date_filter = (request.args.get("from_date") or "").strip()
     to_date_filter = (request.args.get("to_date") or "").strip()
 
@@ -1162,6 +1256,8 @@ def download_overall_attendance_csv():
         from_date, to_date = to_date, from_date
 
     query = Attendance.query.filter_by(branch=branch, semester=semester)
+    if selected_subject:
+        query = query.filter(Attendance.subject.in_(subject_match_values(selected_subject)))
     if from_date:
         query = query.filter(Attendance.date >= from_date)
     if to_date:
@@ -1852,23 +1948,24 @@ if __name__ == "__main__":
                 (
                     "Rajeev Kumar",
                     "rajeev.kumar357@gmail.com",
-                    "ECE",
-                    "Electronics Engineering",
+                    "CE",
+                    "Computer Engineering",
                 ),
-                ("Avinash Sharma", "avinash.acet@yahoo.com", "CE", "Civil Engineering"),
+                ("Avinash Sharma", "avinash.acet@yahoo.com", "CE", "Computer Engineering"),
                 (
                     "Surbhi Sharma",
                     "surbhisharma.jmj@gmail.com",
                     "CE",
-                    "Civil Engineering",
+                    "Computer Engineering",
                 ),
-                ("Tamanna", "er.tamanna14@gmail.com", "CE", "Civil Engineering"),
-                ("Ashima Sharma", "ashima143188@gmail.com", "CE", "Civil Engineering"),
+                ("Tamanna", "er.tamanna14@gmail.com", "CE", "Computer Engineering"),
+                ("Yashwant Singh", "yashwant.singh.ce@gmail.com", "CE", "Computer Engineering"),
+                ("Ashima Sharma", "ashima143188@gmail.com", "CE", "Computer Engineering"),
                 (
                     "Vijay Kumar Sharma",
                     "vijay2122@gmail.com",
                     "CE",
-                    "Civil Engineering",
+                    "Computer Engineering",
                 ),
                 (
                     "Vikal Sharma",

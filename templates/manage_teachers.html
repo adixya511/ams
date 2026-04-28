@@ -241,7 +241,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
-                        <th>Department</th>
+                        <th>Subject</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -250,7 +250,7 @@
                     <tr>
                         <td>{{ t.name }}</td>
                         <td>{{ t.email }}</td>
-                        <td>{{ t.department }}</td>
+                        <td>{{ t.department or '-' }}</td>
                         <td>
                             <a href="{{ url_for('edit_teacher', id=t.id) }}" class="action-btn edit-btn">Edit</a>
                             <a href="{{ url_for('delete_teacher', id=t.id) }}" class="action-btn delete-btn">Delete</a>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Teacher</title>
+    <title>Add Student</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
@@ -90,6 +90,10 @@
             color: var(--text-muted);
         }
 
+        select option {
+            color: var(--text-dark);
+        }
+
         .submit-btn {
             width: 100%;
             padding: 12px;
@@ -132,8 +136,8 @@
 <body>
     <div class="form-card">
         <div class="form-header">
-            <h2>Add New Teacher</h2>
-            <p>Register a new teacher in the system</p>
+            <h2>Add New Student</h2>
+            <p>Register a new student in the system</p>
         </div>
 
         <form method="post">
@@ -143,27 +147,33 @@
             </div>
 
             <div class="form-group">
-                <label for="subject">Subject</label>
-                <select id="subject" name="subject" required>
-                    <option value="">Select Subject</option>
-                    {% for subject in subject_options %}
-                        <option value="{{ subject }}" {% if selected_subject == subject %}selected{% endif %}>{{ subject }}</option>
+                <label for="roll_number">Roll Number</label>
+                <input type="text" id="roll_number" name="roll_number" placeholder="e.g., CS101" required>
+            </div>
+
+            <div class="form-group">
+                <label for="branch">📚 Branch</label>
+                <select id="branch" name="branch" required>
+                    <option value="">-- Select Branch --</option>
+                    {% for branch in branches %}
+                        <option value="{{ branch }}">{{ branch }}</option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="semester">Semester</label>
+                <label for="semester">📖 Semester</label>
                 <select id="semester" name="semester" required>
-                    {% for sem in semesters %}
-                        <option value="{{ sem }}">Semester {{ sem }}</option>
+                    <option value="">-- Select Semester --</option>
+                    {% for semester in semesters %}
+                        <option value="{{ semester }}">{{ semester }}</option>
                     {% endfor %}
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="teacher@example.com" required>
+                <input type="email" id="email" name="email" placeholder="student@example.com" required>
             </div>
 
             <div class="form-group">
@@ -171,11 +181,10 @@
                 <input type="password" id="password" name="password" placeholder="Create a password" required>
             </div>
 
-            <button type="submit" class="submit-btn">➕ Add Teacher</button>
+            <button type="submit" class="submit-btn">➕ Add Student</button>
         </form>
 
-        <a href="{{ url_for('manage_teachers') }}" class="back-link">← Back to Teachers</a>
+        <a href="{{ url_for('manage_students') }}" class="back-link">← Back to Students</a>
     </div>
-
 </body>
 </html>

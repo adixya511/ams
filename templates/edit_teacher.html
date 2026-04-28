@@ -145,8 +145,16 @@
       </div>
 
       <div class="form-group">
-        <label>Department</label>
-        <input name="department" value="{{ teacher.department or '' }}">
+        <label>Subject</label>
+        <select name="subject" required>
+          <option value="">Select Subject</option>
+          {% for subject in subject_options %}
+            <option value="{{ subject }}" {% if teacher.department == subject %}selected{% endif %}>{{ subject }}</option>
+          {% endfor %}
+          {% if teacher.department and teacher.department not in subject_options %}
+            <option value="{{ teacher.department }}" selected>{{ teacher.department }} (Current)</option>
+          {% endif %}
+        </select>
       </div>
 
       <div class="form-group">
