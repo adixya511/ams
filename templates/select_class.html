@@ -155,7 +155,13 @@
 <body>
   <div class="container">
     <h2>{{ page_title }}</h2>
-    <p class="info-text">Select the branch, semester, and subject to continue</p>
+    <p class="info-text">
+      {% if show_subject is defined and not show_subject %}
+        Select the branch and semester to continue
+      {% else %}
+        Select the branch, semester, and subject to continue
+      {% endif %}
+    </p>
 
     <form method="POST">
       <div class="form-group">
@@ -178,15 +184,17 @@
         </select>
       </div>
 
-      <div class="form-group">
-        <label for="subject">Subject</label>
-        <select id="subject" name="subject" required>
-          <option value="">-- Select Subject --</option>
-          {% for sub in subjects %}
-            <option value="{{ sub }}">{{ sub }}</option>
-          {% endfor %}
-        </select>
-      </div>
+      {% if show_subject is not defined or show_subject %}
+        <div class="form-group">
+          <label for="subject">Subject</label>
+          <select id="subject" name="subject" required>
+            <option value="">-- Select Subject --</option>
+            {% for sub in subjects %}
+              <option value="{{ sub }}">{{ sub }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
 
       <div class="button-group">
         <button type="submit" class="btn-submit">Continue -></button>

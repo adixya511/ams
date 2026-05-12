@@ -655,8 +655,11 @@ def teacher_quick_action():
     subject = canonicalize_teacher_subject(request.form.get("subject"))
     action = (request.form.get("action") or "").strip()
 
-    if not branch or not semester or not subject:
-        flash("Please select branch, semester, and subject.")
+    if not branch or not semester:
+        flash("Please select branch and semester.")
+        return redirect(url_for("teacher_dashboard"))
+    if action in {"mark", "view"} and not subject:
+        flash("Please select a valid subject.")
         return redirect(url_for("teacher_dashboard"))
 
     if action == "mark":
@@ -670,7 +673,7 @@ def teacher_quick_action():
         )
     if action == "overall":
         return redirect(
-            url_for("overall_attendance", branch=branch, semester=semester, subject=subject)
+            url_for("overall_attendance", branch=branch, semester=semester)
         )
 
     flash("Invalid action selected.")
@@ -758,18 +761,16 @@ def select_class_overall():
         abort(403)
 
     if request.method == "POST":
-        branch = request.form.get("branch")
-        semester = request.form.get("semester")
-        subject = canonicalize_teacher_subject(request.form.get("subject"))
-        if not subject:
-            flash("Please select a valid subject.")
+        branch = (request.form.get("branch") or "").strip()
+        semester = (request.form.get("semester") or "").strip()
+        if not branch or not semester:
+            flash("Please select branch and semester.")
             return redirect(url_for("select_class_overall"))
         return redirect(
             url_for(
                 "overall_attendance",
                 branch=branch,
                 semester=semester,
-                subject=subject,
             )
         )
 
@@ -788,6 +789,7 @@ def select_class_overall():
         branches=branches,
         semesters=semesters,
         subjects=subjects,
+        show_subject=False,
     )
 
 
@@ -1026,9 +1028,6 @@ def overall_attendance():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
-    selected_subject = (
-        (request.args.get("subject") or request.form.get("subject") or "").strip()
-    )
     if not branch or not semester:
         return redirect(url_for("select_class_overall"))
 
@@ -1058,8 +1057,6 @@ def overall_attendance():
         from_date, to_date = to_date, from_date
 
     query = Attendance.query.filter_by(branch=branch, semester=semester)
-    if selected_subject:
-        query = query.filter(Attendance.subject.in_(subject_match_values(selected_subject)))
     if from_date:
         query = query.filter(Attendance.date >= from_date)
     if to_date:
@@ -1067,36 +1064,12 @@ def overall_attendance():
 
     records = query.order_by(Attendance.date.desc(), Attendance.id.desc()).all()
 
-    subject_counts = {}
     student_counts = {}
     for r in records:
-        subject_key = normalize_subject_name(r.subject)
-        subject_stat = subject_counts.setdefault(subject_key, {"total": 0, "present": 0})
-        subject_stat["total"] += 1
-        if (r.status or "").strip().lower() == "present":
-            subject_stat["present"] += 1
-
         student_stat = student_counts.setdefault(r.student_id, {"total": 0, "present": 0})
         student_stat["total"] += 1
         if (r.status or "").strip().lower() == "present":
             student_stat["present"] += 1
-
-    subject_overall = []
-    for subject_name, c in subject_counts.items():
-        total = c["total"]
-        present = c["present"]
-        absent = total - present
-        pct = round((present / total) * 100, 2) if total else 0.0
-        subject_overall.append(
-            {
-                "subject": subject_name,
-                "present": present,
-                "absent": absent,
-                "total": total,
-                "percentage": pct,
-            }
-        )
-    subject_overall.sort(key=lambda x: x["subject"].lower())
 
     class_students = User.query.filter_by(
         role="student", branch=branch, semester=semester
@@ -1144,11 +1117,9 @@ def overall_attendance():
         teacher=teacher,
         branch=branch,
         semester=semester,
-        selected_subject=selected_subject,
         from_date=(from_date.isoformat() if from_date else ""),
         to_date=(to_date.isoformat() if to_date else ""),
         range_summary=range_summary,
-        subject_overall=subject_overall,
         student_overall=student_overall,
     )
 
@@ -1233,7 +1204,6 @@ def download_overall_attendance_csv():
 
     branch = request.args.get("branch")
     semester = request.args.get("semester")
-    selected_subject = (request.args.get("subject") or "").strip()
     from_date_filter = (request.args.get("from_date") or "").strip()
     to_date_filter = (request.args.get("to_date") or "").strip()
 
@@ -1256,8 +1226,6 @@ def download_overall_attendance_csv():
         from_date, to_date = to_date, from_date
 
     query = Attendance.query.filter_by(branch=branch, semester=semester)
-    if selected_subject:
-        query = query.filter(Attendance.subject.in_(subject_match_values(selected_subject)))
     if from_date:
         query = query.filter(Attendance.date >= from_date)
     if to_date:

@@ -122,8 +122,8 @@
               </select>
             </div>
             <div>
-              <label for="subject">Subject</label>
-              <select id="subject" name="subject" required>
+              <label for="subject">Subject (for Mark/View)</label>
+              <select id="subject" name="subject">
                 <option value="">Select Subject</option>
                 {% for sub in subjects %}
                   <option value="{{ sub }}" {% if teacher.department == sub %}selected{% endif %}>{{ sub }}</option>
